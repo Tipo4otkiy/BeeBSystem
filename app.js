@@ -12,60 +12,57 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-enableIndexedDbPersistence(db).catch(err => console.error("Офлайн ошибка:", err.code));
+enableIndexedDbPersistence(db).catch(() => {});
 
-// --- ЛОГИКА ВВОДА ПЛАНОК (ТЕГИ) ---
+// Управление тегами в форме
 window.currentBars = [];
-window.addBar = () => {
-    const input = document.getElementById('input-bar-add');
+window.currentFamilies = [];
+
+window.addBarTag = () => {
+    const input = document.getElementById('input-bar-val');
     const val = input.value.trim();
-    if(val && !window.currentBars.includes(val)) {
-        window.currentBars.push(val);
-        renderBarTags();
-    }
-    input.value = '';
-    input.focus();
+    if(val && !window.currentBars.includes(val)) { window.currentBars.push(val); renderTags(); }
+    input.value = ''; input.focus();
 };
-window.removeBar = (val) => {
-    window.currentBars = window.currentBars.filter(b => b !== val);
-    renderBarTags();
+window.addFamilyTag = () => {
+    const input = document.getElementById('input-family-val');
+    const val = input.value.trim();
+    if(val && !window.currentFamilies.includes(val)) { window.currentFamilies.push(val); renderTags(); }
+    input.value = ''; input.focus();
 };
-function renderBarTags() {
-    const container = document.getElementById('bar-tags-container');
-    container.innerHTML = window.currentBars.map(b => 
-        `<span class="badge badge-del" onclick="window.removeBar('${b}')">${b} ✖</span>`
-    ).join('');
+window.removeTag = (type, val) => {
+    if(type === 'bar') window.currentBars = window.currentBars.filter(b => b !== val);
+    else window.currentFamilies = window.currentFamilies.filter(f => f !== val);
+    renderTags();
+};
+
+function renderTags() {
+    document.getElementById('bar-tags-container').innerHTML = window.currentBars.map(b => `<span class="badge-del badge-bar" onclick="window.removeTag('bar','${b}')">${b} ✖</span>`).join('');
+    document.getElementById('family-tags-container').innerHTML = window.currentFamilies.map(f => `<span class="badge-del badge-family" onclick="window.removeTag('family','${f}')">${f} ✖</span>`).join('');
 }
 
-// Глобальное хранилище данных для редактирования
 window.batchesData = {};
 
-// --- ОБРАБОТКА ФОРМЫ (ДОБАВЛЕНИЕ ИЛИ РЕДАКТИРОВАНИЕ) ---
+// СОХРАНЕНИЕ
 document.getElementById('add-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if(window.currentBars.length === 0) {
-        alert("Добавь хотя бы одну планку!");
-        return;
-    }
-
-    const btn = document.getElementById('submit-btn');
-    btn.disabled = true;
+    const editId = e.target.dataset.editId;
+    const graftDate = new Date(document.getElementById('input-date').value);
+    
+    const hatch = new Date(graftDate); hatch.setDate(hatch.getDate() + 11);
+    const select = new Date(graftDate); select.setDate(select.getDate() + 9);
 
     const data = {
         lineage: document.getElementById('input-lineage').value,
-        family: document.getElementById('input-family').value,
-        bars: window.currentBars, 
-        pieces: document.getElementById('input-pieces').value || "", // <-- Изменили эту строку
+        families: window.currentFamilies,
+        bars: window.currentBars,
+        pieces: document.getElementById('input-pieces').value || "",
         comment: document.getElementById('input-comment').value,
         graftDateStr: document.getElementById('input-date').value,
+        expectedHatchTimestamp: hatch.getTime(),
+        selectionDateTimestamp: select.getTime(),
         status: 'active'
     };
-
-    const hatch = new Date(data.graftDateStr);
-    hatch.setDate(hatch.getDate() + 11);
-    data.expectedHatchTimestamp = hatch.getTime();
-
-    const editId = e.target.dataset.editId; // Проверяем, это редактирование или новая запись
 
     try {
         if(editId) {
@@ -73,73 +70,60 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
             window.cancelEdit();
         } else {
             data.createdAt = Date.now();
-            data.crossedBars = [];
+            data.crossedBars = []; data.crossedFamilies = [];
             await addDoc(collection(db, "batches"), data);
-            
             e.target.reset();
             document.getElementById('input-date').valueAsDate = new Date();
             document.getElementById('input-lineage').value = 'B-';
-            window.currentBars = [];
-            renderBarTags();
-            
-            // Вместо перехода просто показываем уведомление
-            alert("✅ Партия успешно добавлена в журнал!"); 
+            window.currentBars = []; window.currentFamilies = []; renderTags();
+            alert("✅ Сохранено");
         }
-    } catch (err) {
-        alert("Ошибка! Проверь консоль.");
-        console.error(err);
-    } finally {
-        btn.disabled = false;
-    }
+    } catch (err) { alert("Ошибка!"); }
 });
 
-// --- РЕНДЕРИНГ ДАННЫХ ---
+// МОНИТОРИНГ И АВТО-АРХИВ
 onSnapshot(query(collection(db, "batches"), orderBy("expectedHatchTimestamp", "asc")), (snapshot) => {
     const lists = { events: '', active: '', history: '' };
+    const now = Date.now();
     const today = new Date().setHours(0,0,0,0);
     const tomorrow = today + 86400000;
-    
-    window.batchesData = {}; // Обновляем локальный кэш данных
+    const archiveLimit = 2 * 24 * 60 * 60 * 1000; // 2 дня в мс
 
     snapshot.forEach(docSnap => {
         const d = docSnap.data();
         const id = docSnap.id;
-        window.batchesData[id] = d; // Сохраняем для функции "Изменить"
+        window.batchesData[id] = d;
 
-        const hatchDate = new Date(d.expectedHatchTimestamp);
+        // --- ЛОГИКА АВТО-АРХИВА ---
+        if (d.status === 'active' && now > (d.expectedHatchTimestamp + archiveLimit)) {
+            updateDoc(doc(db, "batches", id), { status: 'history' });
+            return;
+        }
+
         const hatchTime = new Date(d.expectedHatchTimestamp).setHours(0,0,0,0);
+        const selectTime = new Date(d.selectionDateTimestamp).setHours(0,0,0,0);
 
-        // Генерация кликабельных планок
-        // (Поддержка старых данных, где планки были строкой)
-        let barsArray = Array.isArray(d.bars) ? d.bars : (d.bars ? d.bars.split(',').map(s=>s.trim()) : []);
-        let crossedArray = d.crossedBars || [];
-        
-        let barsHtml = barsArray.map(b => {
-            const isCrossed = crossedArray.includes(b);
-            return `<button class="bar-btn ${isCrossed ? 'crossed' : ''}" onclick="window.toggleCrossBar('${id}', '${b}', ${isCrossed})">${b}</button>`;
-        }).join('');
+        const buildTags = (arr, crossed, type, colorClass) => {
+            return (arr || []).map(val => {
+                const isCr = (crossed || []).includes(val);
+                return `<button class="btn-tag ${colorClass} ${isCr ? 'crossed' : ''}" onclick="window.toggleCross('${id}','${type}','${val}',${isCr})">${val}</button>`;
+            }).join('');
+        };
 
         const html = `
             <div class="card ${d.status === 'history' ? 'history' : ''}">
-                <div>
-                    <h3>
-                        ${d.lineage} 
-                        <span class="badge">Семья №${d.family}</span>
-                    </h3>
-                    <p style="margin: 10px 0;"><strong>Планки:</strong> ${barsHtml}</p>
-                    ${d.pieces ? `<p>📦 Количество: <strong>${d.pieces} шт.</strong></p>` : ''}
-                    <p>📅 Прививка: ${new Date(d.graftDateStr).toLocaleDateString('ru-RU')}</p>
-                    <p style="font-size: 1.1rem; color: ${hatchTime <= today ? 'var(--danger)' : 'inherit'}">
-                        🐣 <strong>Выход: ${hatchDate.toLocaleDateString('ru-RU')}</strong>
-                    </p>
-                    ${d.comment ? `<p>📝 <em style="color:#666">${d.comment}</em></p>` : ''}
-                </div>
-                <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
-                    ${d.status === 'active' ? `
-                        <button class="btn-action btn-success" onclick="window.markHatched('${id}')">В ИСТОРИЮ</button>
-                        <button class="btn-action btn-outline" onclick="window.editBatch('${id}')">✏️</button>
-                    ` : ''}
-                    <button class="btn-action btn-danger" onclick="window.deleteBatch('${id}')">🗑️</button>
+                <h3>${d.lineage}</h3>
+                <p><strong>Семьи:</strong> ${buildTags(d.families, d.crossedFamilies, 'Families', 'family-btn')}</p>
+                <p><strong>Планки:</strong> ${buildTags(d.bars, d.crossedBars, 'Bars', 'bar-btn')}</p>
+                <p>📦 Кол-во: ${d.pieces ? `<strong>${d.pieces} шт.</strong>` : `<strong style="color: var(--danger);">надо ввести!</strong>`}</p>
+                <p>🔍 Отбор: ${new Date(d.selectionDateTimestamp).toLocaleDateString('ru-RU')}</p>
+                <p style="font-size: 1.1rem; color: ${hatchTime <= today ? 'var(--danger)' : 'inherit'}">
+                    🐣 <strong>Выход: ${new Date(d.expectedHatchTimestamp).toLocaleDateString('ru-RU')}</strong>
+                </p>
+                ${d.comment ? `<p style="font-size:0.8rem; background:#fffde7; padding:5px;">${d.comment}</p>` : ''}
+                <div class="card-actions">
+                    <button class="btn-action btn-edit" onclick="window.editBatch('${id}')">ИЗМЕНИТЬ</button>
+                    <button class="btn-action btn-danger" onclick="window.deleteBatch('${id}')">УДАЛИТЬ</button>
                 </div>
             </div>
         `;
@@ -147,78 +131,45 @@ onSnapshot(query(collection(db, "batches"), orderBy("expectedHatchTimestamp", "a
         if (d.status === 'history') lists.history += html;
         else {
             lists.active += html;
-            if (hatchTime <= tomorrow) lists.events += html.replace('card ', 'card alert ');
+            if (hatchTime <= tomorrow || selectTime <= tomorrow) lists.events += html.replace('card ', 'card alert ');
         }
     });
 
-    document.getElementById('events-list').innerHTML = lists.events || '<p>На ближайшие 2 дня событий нет.</p>';
-    document.getElementById('active-list').innerHTML = lists.active || '<p>Нет активных закладок.</p>';
-    document.getElementById('history-list').innerHTML = lists.history || '<p>Архив пуст.</p>';
+    document.getElementById('events-list').innerHTML = lists.events || '<p>Событий нет</p>';
+    document.getElementById('active-list').innerHTML = lists.active || '';
+    document.getElementById('history-list').innerHTML = lists.history || '';
 });
 
-// --- ГЛОБАЛЬНЫЕ ФУНКЦИИ УПРАВЛЕНИЯ КАРТОЧКАМИ ---
-
-// Зачеркнуть/Отменить зачеркивание планки
-window.toggleCrossBar = async (id, barNumber, isCrossed) => {
-    const ref = doc(db, "batches", id);
-    if (isCrossed) {
-        await updateDoc(ref, { crossedBars: arrayRemove(barNumber) });
-    } else {
-        await updateDoc(ref, { crossedBars: arrayUnion(barNumber) });
-    }
+window.toggleCross = async (id, type, val, isCr) => {
+    const field = isCr ? `crossed${type}` : `crossed${type}`;
+    await updateDoc(doc(db, "batches", id), { [isCr ? `crossed${type}` : `crossed${type}`]: isCr ? arrayRemove(val) : arrayUnion(val) });
 };
 
-// В историю
-window.markHatched = id => confirm("Перенести в архив?") && updateDoc(doc(db, "batches", id), { status: 'history' });
+window.deleteBatch = id => confirm("Удалить навсегда?") && deleteDoc(doc(db, "batches", id));
 
-// Удалить полностью
-window.deleteBatch = async id => {
-    if(confirm("Удалить запись навсегда? Это действие нельзя отменить.")) {
-        await deleteDoc(doc(db, "batches", id));
-    }
-};
-
-// Редактировать (заполняет форму)
 window.editBatch = id => {
     const d = window.batchesData[id];
-    if(!d) return;
-
-    document.querySelectorAll('.nav-btn')[1].click(); // Переход на вкладку Записи
-    
+    switchTab('add', document.querySelectorAll('.nav-btn')[1]);
     document.getElementById('input-date').value = d.graftDateStr;
     document.getElementById('input-lineage').value = d.lineage;
-    document.getElementById('input-family').value = d.family;
-    document.getElementById('input-pieces').value = d.pieces || '';
-    document.getElementById('input-comment').value = d.comment || '';
-    
-    // Восстанавливаем планки
-    window.currentBars = Array.isArray(d.bars) ? [...d.bars] : (d.bars ? d.bars.split(',').map(s=>s.trim()) : []);
-    renderBarTags();
-
-    // Меняем визуал формы
-    const formCard = document.getElementById('main-form-card');
-    formCard.classList.add('edit-mode');
-    document.getElementById('form-title').innerText = "✏️ Редактирование";
-    document.getElementById('submit-btn').innerText = "СОХРАНИТЬ ИЗМЕНЕНИЯ";
+    document.getElementById('input-pieces').value = d.pieces;
+    document.getElementById('input-comment').value = d.comment;
+    window.currentBars = [...(d.bars || [])];
+    window.currentFamilies = [...(d.families || [])];
+    renderTags();
+    document.getElementById('main-form-card').classList.add('edit-mode');
+    document.getElementById('form-title').innerText = "✏️ Изменение";
+    document.getElementById('submit-btn').innerText = "СОХРАНИТЬ";
     document.getElementById('cancel-edit-btn').style.display = 'block';
-    
-    // Привязываем ID к форме
     document.getElementById('add-form').dataset.editId = id;
-    window.scrollTo(0, 0);
 };
 
-// Отмена редактирования
 window.cancelEdit = () => {
-    const form = document.getElementById('add-form');
-    delete form.dataset.editId;
-    form.reset();
-    document.getElementById('input-date').valueAsDate = new Date();
-    document.getElementById('input-lineage').value = 'B-';
-    window.currentBars = [];
-    renderBarTags();
-
+    document.getElementById('add-form').reset();
+    delete document.getElementById('add-form').dataset.editId;
+    window.currentBars = []; window.currentFamilies = []; renderTags();
     document.getElementById('main-form-card').classList.remove('edit-mode');
     document.getElementById('form-title').innerText = "Новая партия";
-    document.getElementById('submit-btn').innerText = "ДОБАВИТЬ В ЖУРНАЛ";
+    document.getElementById('submit-btn').innerText = "СОХРАНИТЬ";
     document.getElementById('cancel-edit-btn').style.display = 'none';
 };

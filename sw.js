@@ -1,4 +1,4 @@
-const CACHE = 'v2-bdzholyar';
+const CACHE = 'v3-ownerka';
 const ASSETS = ['./index.html', './app.js', './manifest.json'];
 
 self.addEventListener('install', e => {
