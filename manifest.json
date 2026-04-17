@@ -1,0 +1,15 @@
+{
+  "name": "Ownerka.Бджоляр",
+  "short_name": "Бджоляр",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#FFC107",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1998/1998638.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
