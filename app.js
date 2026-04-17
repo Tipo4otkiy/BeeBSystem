@@ -53,9 +53,9 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
 
     const data = {
         lineage: document.getElementById('input-lineage').value,
-        family: parseInt(document.getElementById('input-family').value),
-        bars: window.currentBars, // Теперь сохраняем как массив
-        pieces: parseInt(document.getElementById('input-pieces').value),
+        family: document.getElementById('input-family').value,
+        bars: window.currentBars, 
+        pieces: document.getElementById('input-pieces').value || "", // <-- Изменили эту строку
         comment: document.getElementById('input-comment').value,
         graftDateStr: document.getElementById('input-date').value,
         status: 'active'
@@ -127,7 +127,7 @@ onSnapshot(query(collection(db, "batches"), orderBy("expectedHatchTimestamp", "a
                         <span class="badge">Семья №${d.family}</span>
                     </h3>
                     <p style="margin: 10px 0;"><strong>Планки:</strong> ${barsHtml}</p>
-                    <p>📦 <strong>${d.pieces} шт.</strong></p>
+                    ${d.pieces ? `<p>📦 Количество: <strong>${d.pieces} шт.</strong></p>` : ''}
                     <p>📅 Прививка: ${new Date(d.graftDateStr).toLocaleDateString('ru-RU')}</p>
                     <p style="font-size: 1.1rem; color: ${hatchTime <= today ? 'var(--danger)' : 'inherit'}">
                         🐣 <strong>Выход: ${hatchDate.toLocaleDateString('ru-RU')}</strong>
@@ -188,7 +188,7 @@ window.editBatch = id => {
     document.getElementById('input-date').value = d.graftDateStr;
     document.getElementById('input-lineage').value = d.lineage;
     document.getElementById('input-family').value = d.family;
-    document.getElementById('input-pieces').value = d.pieces;
+    document.getElementById('input-pieces').value = d.pieces || '';
     document.getElementById('input-comment').value = d.comment || '';
     
     // Восстанавливаем планки
