@@ -14,11 +14,24 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 enableIndexedDbPersistence(db).catch(() => {});
 
+// Utility functions for safe date parsing/formatting in local timezone
+const getLocalIsoDate = (ts) => {
+    const d = new Date(ts);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+};
+const getStampFromIso = (isoStr) => {
+    if (!isoStr) return Date.now();
+    const [y, m, d] = isoStr.split('-');
+    return new Date(y, m - 1, d).getTime();
+};
+
 window.appMode = 'batches';
 
 window.currentBars = [];
 window.currentFamilies = [];
 window.currentFFamilies = [];
+window.currentFHistory = []; // Array of dates for Family audits
+
 window.batchesData = {};
 window.familiesData = {};
 
@@ -34,11 +47,11 @@ window.setAppMode = (mode) => {
     document.getElementById('form-batches-fields').style.display = mode === 'batches' ? 'block' : 'none';
     document.getElementById('form-families-fields').style.display = mode === 'families' ? 'block' : 'none';
     
-    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
     if(mode === 'batches') {
-        document.getElementById('input-date').value = new Date(Date.now() - tzoffset).toISOString().slice(0, 10);
+        document.getElementById('input-date').value = getLocalIsoDate(Date.now());
     } else {
-        document.getElementById('input-family-date').value = new Date(Date.now() - tzoffset).toISOString().slice(0, 10);
+        document.getElementById('input-f-created').value = getLocalIsoDate(Date.now());
+        document.getElementById('input-f-next').value = getLocalIsoDate(Date.now() + 864000000);
     }
     
     window.renderDOM();
@@ -84,17 +97,52 @@ document.getElementById('input-bar-val').addEventListener('keydown', e => { if (
 document.getElementById('input-family-val').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); window.addBarTag(true); } });
 document.getElementById('input-f-family-val').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); window.addFFamilyTag(); } });
 
+// --- УПРАВЛЕНИЕ АУДИТОМ СЕМЕЙ ---
+window.renderFHistory = () => {
+    const container = document.getElementById('f-history-list');
+    if(!container) return;
+    container.innerHTML = window.currentFHistory.map((dStr, idx) => `
+        <div class="history-edit-row">
+            <input type="date" class="form-input" value="${dStr}" onchange="window.updateHistoryDate(${idx}, this.value)">
+            <button type="button" class="btn-del-history" onclick="window.removeHistoryDate(${idx})">✕</button>
+        </div>
+    `).join('');
+};
+window.addHistoryInput = () => {
+    window.currentFHistory.push(getLocalIsoDate(Date.now()));
+    window.renderFHistory();
+    window.recalcNextCheck();
+};
+window.updateHistoryDate = (idx, val) => {
+    window.currentFHistory[idx] = val;
+    window.recalcNextCheck();
+};
+window.removeHistoryDate = (idx) => {
+    window.currentFHistory.splice(idx, 1);
+    window.renderFHistory();
+    window.recalcNextCheck();
+};
+window.recalcNextCheck = () => {
+    // Находим самую позднюю дату (или дату создания, если истории нет)
+    let maxDate = getStampFromIso(document.getElementById('input-f-created').value);
+    window.currentFHistory.forEach(dStr => {
+        const t = getStampFromIso(dStr);
+        if(t > maxDate && !isNaN(t)) maxDate = t;
+    });
+    // Прибавляем ровно 10 дней и выставляем
+    document.getElementById('input-f-next').value = getLocalIsoDate(maxDate + 864000000);
+};
+
+// --- СОХРАНЕНИЕ ---
 document.getElementById('add-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const editId = e.target.dataset.editId;
     
     try {
         if (window.appMode === 'batches') {
-            const graftDate = new Date(document.getElementById('input-date').value);
-            const hatch = new Date(graftDate);
-            hatch.setDate(hatch.getDate() + 11);
-            const select = new Date(graftDate);
-            select.setDate(select.getDate() + 9);
+            const graftDate = document.getElementById('input-date').value;
+            if(!graftDate) return;
+            const graftMs = getStampFromIso(graftDate);
 
             const data = {
                 lineage: document.getElementById('input-lineage').value,
@@ -102,9 +150,9 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
                 bars: window.currentBars,
                 pieces: document.getElementById('input-pieces').value || "",
                 comment: document.getElementById('input-comment').value,
-                graftDateStr: document.getElementById('input-date').value,
-                expectedHatchTimestamp: hatch.getTime(),
-                selectionDateTimestamp: select.getTime(),
+                graftDateStr: graftDate,
+                expectedHatchTimestamp: graftMs + (11 * 86400000),
+                selectionDateTimestamp: graftMs + (9 * 86400000),
                 status: 'active'
             };
 
@@ -117,28 +165,27 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
                 addDoc(collection(db, "batches"), data);
             }
         } else {
-            const dateStr = document.getElementById('input-family-date').value;
-            const [y, m, d] = dateStr.split('-');
-            const selectedDate = new Date(y, m - 1, d);
-            const selectedMs = isNaN(selectedDate.getTime()) ? Date.now() : selectedDate.getTime();
+            const createdMs = getStampFromIso(document.getElementById('input-f-created').value);
+            const nextMs = getStampFromIso(document.getElementById('input-f-next').value);
             
+            // Превращаем строки 'yyyy-mm-dd' в таймстемпы и сортируем
+            const histArray = window.currentFHistory
+                .filter(d => d)
+                .map(d => getStampFromIso(d))
+                .sort((a,b) => a - b);
+
             const data = {
                 families: window.currentFFamilies,
                 comment: document.getElementById('input-comment').value,
+                createdAt: createdMs,
+                nextCheckTimestamp: nextMs,
+                history: histArray,
                 status: 'active'
             };
 
             if (editId) {
-                // Если мы Изменяем, мы НЕ трогаем историю и дату создания,
-                // мы просто перезаписываем дату Следующей проверки
-                data.nextCheckTimestamp = selectedMs;
                 updateDoc(doc(db, "families", editId), data);
             } else {
-                // Если мы Создаем, дата из календаря становится датой Создания
-                // а следующая проверка будет через 10 дней
-                data.createdAt = selectedMs;
-                data.nextCheckTimestamp = selectedMs + 864000000;
-                data.history = [];
                 addDoc(collection(db, "families"), data);
             }
         }
@@ -151,6 +198,7 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
     }
 });
 
+// --- СИНХРОНИЗАЦИЯ ---
 onSnapshot(query(collection(db, "batches"), orderBy("expectedHatchTimestamp", "asc")), (snapshot) => {
     const now = Date.now();
     const today = new Date().setHours(0, 0, 0, 0);
@@ -334,7 +382,7 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
             ${historyBlock}
             <div class="card-actions">
                 ${isHistory ? `<button class="btn-action btn-danger" onclick="event.stopPropagation(); window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
-                ${showRenew ? `<button class="btn-action btn-success" onclick="event.stopPropagation(); window.renewFamily('${safeId}')">⏳ Продлить</button>` : ''}
+                ${showRenew ? `<button class="btn-action btn-success" onclick="event.stopPropagation(); window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
                 <button class="btn-action btn-edit" onclick="event.stopPropagation(); window.editFamily('${safeId}')">✏️ Изменить</button>`}
             </div>
         </div>
@@ -346,7 +394,6 @@ window.toggleCross = async (id, type, val, isCrossed) => {
 };
 
 window.toggleFamilyHistory = (e, id) => {
-    // Игнорируем нажатия на кнопки действий, чтобы не открывалась история во время редактирования
     if (e && e.target.closest('.btn-action, .btn-tag')) return;
     const el = document.getElementById(`history-${id}`);
     if(el) el.classList.toggle('show');
@@ -378,7 +425,7 @@ window.deleteFromEdit = () => {
 
 window.editBatch = id => {
     const d = window.batchesData[id];
-    document.getElementById('input-date').value = d.graftDateStr;
+    document.getElementById('input-date').value = getLocalIsoDate(d.expectedHatchTimestamp - (11 * 86400000));
     document.getElementById('input-lineage').value = d.lineage;
     document.getElementById('input-pieces').value = d.pieces;
     document.getElementById('input-comment').value = d.comment || '';
@@ -399,18 +446,19 @@ window.editBatch = id => {
 
 window.editFamily = id => {
     const d = window.familiesData[id];
-    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
     
-    document.getElementById('input-family-date').value = new Date(d.nextCheckTimestamp - tzoffset).toISOString().slice(0, 10);
+    document.getElementById('input-f-created').value = getLocalIsoDate(d.createdAt);
+    document.getElementById('input-f-next').value = getLocalIsoDate(d.nextCheckTimestamp);
     document.getElementById('input-comment').value = d.comment || '';
+    
     window.currentFFamilies = [...(d.families || [])];
+    window.currentFHistory = (d.history || []).map(ts => getLocalIsoDate(ts));
+    
     window.renderTags();
+    window.renderFHistory();
+    document.getElementById('f-history-section').style.display = 'block';
 
     document.getElementById('sheet-title').textContent = '✏️ Редагування сім\'ї';
-    
-    const lbl = document.getElementById('family-date-label');
-    if(lbl) lbl.textContent = 'Наступна перевірка';
-    
     document.getElementById('add-form').dataset.editId = id;
     document.getElementById('add-form').dataset.editCollection = 'families';
     
@@ -429,19 +477,25 @@ window.cancelEdit = () => {
     window.currentBars = [];
     window.currentFamilies = [];
     window.currentFFamilies = [];
+    window.currentFHistory = [];
+    
     window.renderTags();
+    window.renderFHistory();
+    document.getElementById('f-history-section').style.display = 'none';
     
-    document.getElementById('sheet-title').textContent = window.appMode === 'batches' ? '📖 Нова партія' : '🏠 Нова перевірка сім\'ї';
-    
-    const lbl = document.getElementById('family-date-label');
-    if(lbl) lbl.textContent = 'Дата створення';
+    document.getElementById('sheet-title').textContent = window.appMode === 'batches' ? '📖 Нова партія' : '🏠 Нова сім\'я';
     
     document.getElementById('cancel-edit-btn').style.display = 'none';
     document.getElementById('delete-edit-btn').style.display = 'none';
     document.getElementById('form-actions').classList.remove('is-editing');
     
-    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-    document.getElementById('input-date').value = new Date(Date.now() - tzoffset).toISOString().slice(0, 10);
-    document.getElementById('input-family-date').value = new Date(Date.now() - tzoffset).toISOString().slice(0, 10);
+    document.getElementById('input-date').value = getLocalIsoDate(Date.now());
+    document.getElementById('input-f-created').value = getLocalIsoDate(Date.now());
+    document.getElementById('input-f-next').value = getLocalIsoDate(Date.now() + 864000000);
     document.getElementById('input-lineage').value = 'B-';
 };
+
+// Инициализация дат при загрузке
+document.getElementById('input-date').value = getLocalIsoDate(Date.now());
+document.getElementById('input-f-created').value = getLocalIsoDate(Date.now());
+document.getElementById('input-f-next').value = getLocalIsoDate(Date.now() + 864000000);

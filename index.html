@@ -78,30 +78,37 @@
             color: var(--honey);
         }
 
+        /* ОЧЕВИДНЫЙ ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМОВ */
         .top-mode-tabs {
             display: flex;
             background: var(--bg2);
-            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            gap: 10px;
             position: sticky;
             top: var(--header-h);
             z-index: 190;
+            border-bottom: 1px solid var(--border);
         }
         .mode-tab {
             flex: 1;
             padding: 12px;
-            background: none;
-            border: none;
+            background: var(--bg3);
+            border: 2px solid transparent;
             color: var(--text-muted);
+            border-radius: 14px;
             font-family: 'Unbounded', sans-serif;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             font-weight: 700;
             cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
         }
         .mode-tab.active {
+            background: rgba(76,175,80,0.12);
             color: var(--honey);
-            border-bottom-color: var(--honey);
+            border-color: var(--honey);
+            box-shadow: 0 4px 15px rgba(76,175,80,0.2);
+            transform: translateY(-1px);
         }
 
         .tabs-viewport { overflow: hidden; position: relative; }
@@ -113,7 +120,7 @@
         }
         .tab-pane {
             width: calc(100% / 3);
-            min-height: calc(100dvh - var(--header-h) - 45px - var(--nav-h));
+            min-height: calc(100dvh - var(--header-h) - 65px - var(--nav-h));
             padding: 18px 14px calc(var(--fab-size) + 88px);
             flex-shrink: 0;
         }
@@ -217,10 +224,7 @@
             overflow: hidden;
             transition: transform 0.15s, box-shadow 0.15s;
         }
-        .card.family-card {
-            cursor: pointer;
-            -webkit-tap-highlight-color: transparent;
-        }
+        .card.family-card { cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .card:active { transform: scale(0.985); }
         .card-accent { height: 3px; background: var(--honey); }
         .card.alert { border-color: rgba(255,77,77,0.22); }
@@ -309,7 +313,6 @@
         .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(255,77,77,0.18); }
         .btn-success { background: rgba(76,175,130,0.15); color: var(--success); border: 1px solid rgba(76,175,130,0.3); }
 
-        /* Обособленный дизайн истории для семей */
         .family-history {
             display: none;
             margin-top: 12px;
@@ -428,6 +431,24 @@
         .badge-bar { background: var(--bar-bg); color: var(--bar-text); border-color: var(--bar-border); }
         .badge-family { background: var(--family-bg); color: var(--family-text); border-color: var(--family-border); }
 
+        /* Поля истории внутри формы */
+        .history-edit-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .history-edit-row .form-input { flex: 1; }
+        .btn-del-history {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border: 1px solid rgba(255,77,77,0.18);
+            border-radius: 11px;
+            width: 46px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+
         .form-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 22px; }
         .form-actions.has-cancel { grid-template-columns: 1fr 1fr; }
         .form-actions.is-editing {
@@ -544,6 +565,8 @@
             .desktop-mode-tabs {
                 display: flex;
                 background: var(--bg2);
+                padding: 12px 16px;
+                gap: 10px;
                 border-bottom: 1px solid var(--border);
             }
 
@@ -688,7 +711,7 @@
                 <div class="form-row">
                     <div class="form-section">
                         <label class="form-label">Дата прищеплення</label>
-                        <input class="form-input" type="date" id="input-date" required>
+                        <input class="form-input" type="date" id="input-date">
                     </div>
                     <div class="form-section">
                         <label class="form-label">Лінія</label>
@@ -721,16 +744,27 @@
 
             <div id="form-families-fields" style="display:none;">
                 <div class="form-section">
-                    <label class="form-label" id="family-date-label">Дата створення</label>
-                    <input class="form-input" type="date" id="input-family-date">
-                </div>
-                <div class="form-section">
                     <label class="form-label">Сімейства</label>
                     <div class="tag-input-row">
                         <input class="form-input" type="number" id="input-f-family-val" placeholder="Номер сімейства">
                         <button type="button" class="btn-add-tag" onclick="window.addFFamilyTag()">+</button>
                     </div>
                     <div class="tags-container" id="f-family-tags-container"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-section">
+                        <label class="form-label">Створено</label>
+                        <input class="form-input" type="date" id="input-f-created" onchange="window.recalcNextCheck()">
+                    </div>
+                    <div class="form-section">
+                        <label class="form-label">Наступна перевірка</label>
+                        <input class="form-input" type="date" id="input-f-next">
+                    </div>
+                </div>
+                <div class="form-section" id="f-history-section" style="display:none;">
+                    <label class="form-label">Аудит перевірок</label>
+                    <div id="f-history-list"></div>
+                    <button type="button" class="btn-cancel-form" style="width:100%; padding: 10px; margin-top: 5px;" onclick="window.addHistoryInput()">+ Додати перевірку</button>
                 </div>
             </div>
 
@@ -813,7 +847,7 @@
         const fab = document.getElementById('fab');
         if (fab) fab.classList.add('is-open');
         if (!editMode) {
-            document.getElementById('sheet-title').textContent = window.appMode === 'batches' ? '📖 Нова партія' : '🏠 Нова перевірка сім\'ї';
+            document.getElementById('sheet-title').textContent = window.appMode === 'batches' ? '📖 Нова партія' : '🏠 Нова сім\'я';
         }
     }
     function closeSheet() {
@@ -851,15 +885,6 @@
 
     document.addEventListener('keydown', e => { if(e.key==='Escape') closeSheet(); });
 
-    function setLocalToday(inputId) {
-        const el = document.getElementById(inputId);
-        if(el) {
-            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-            el.value = new Date(Date.now() - tzoffset).toISOString().slice(0, 10);
-        }
-    }
-    setLocalToday('input-date');
-    setLocalToday('input-family-date');
 </script>
 
 <script type="module" src="app.js"></script>
