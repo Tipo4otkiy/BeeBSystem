@@ -185,6 +185,7 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
             if (editId) {
                 updateDoc(doc(db, "families", editId), data);
             } else {
+                data.crossedFamilies = []; // Добавляем массив для зачеркиваний при создании
                 addDoc(collection(db, "families"), data);
             }
         }
@@ -293,6 +294,10 @@ window.renderDOM = () => {
     }
 };
 
+window.toggleCross = async (id, type, val, isCrossed, collectionName = 'batches') => {
+    await updateDoc(doc(db, collectionName, id), { [`crossed${type}`]: isCrossed ? arrayRemove(val) : arrayUnion(val) });
+};
+
 function buildBatchCard(id, d, today, tomorrow, isAlert = false) {
     const hatchTime = new Date(d.expectedHatchTimestamp).setHours(0, 0, 0, 0);
     const selectTime = new Date(d.selectionDateTimestamp).setHours(0, 0, 0, 0);
@@ -313,7 +318,7 @@ function buildBatchCard(id, d, today, tomorrow, isAlert = false) {
     const buildTags = (arr, crossed, type, colorClass) => (arr || []).map(val => {
         const isCr = (crossed || []).includes(val);
         const safeVal = val.replace(/'/g, "\\'");
-        return `<button class="btn-tag ${colorClass}${isCr ? ' crossed' : ''}" onclick="window.toggleCross('${safeId}','${type}','${safeVal}',${isCr})">${val}</button>`;
+        return `<button type="button" class="btn-tag ${colorClass}${isCr ? ' crossed' : ''}" onclick="window.toggleCross('${safeId}','${type}','${safeVal}',${isCr}, 'batches')">${val}</button>`;
     }).join('');
 
     const piecesHtml = d.pieces ? `<span class="card-pieces">📦 ${d.pieces} шт.</span>` : `<span class="card-pieces missing">📦 не указано!</span>`;
@@ -333,7 +338,7 @@ function buildBatchCard(id, d, today, tomorrow, isAlert = false) {
             </div>
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
             <div class="card-actions">
-                ${isHistory ? `<button class="btn-action btn-danger" onclick="window.deleteItem('batches', '${safeId}')">🗑 Удалить</button>` : `<button class="btn-action btn-edit" onclick="window.editBatch('${safeId}')">✏️ Изменить</button>`}
+                ${isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('batches', '${safeId}')">🗑 Удалить</button>` : `<button type="button" class="btn-action btn-edit" onclick="window.editBatch('${safeId}')">✏️ Изменить</button>`}
             </div>
         </div>
     </div>`;
@@ -353,7 +358,14 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
         else if (nextT - today === 86400000) { nClass = 'soon'; showRenew = true; }
     }
 
-    const tagsHtml = (d.families || []).map(val => `<span class="btn-tag family-btn">${val}</span>`).join('');
+    // Возвращаем функцию перечеркивания для семей с указанием коллекции 'families'
+    const buildTags = (arr, crossed, type, colorClass) => (arr || []).map(val => {
+        const isCr = (crossed || []).includes(val);
+        const safeVal = val.replace(/'/g, "\\'");
+        return `<button type="button" class="btn-tag ${colorClass}${isCr ? ' crossed' : ''}" onclick="window.toggleCross('${safeId}','${type}','${safeVal}',${isCr}, 'families')">${val}</button>`;
+    }).join('');
+
+    const tagsHtml = buildTags(d.families, d.crossedFamilies, 'Families', 'family-btn');
     
     const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('ru-RU')}</div>`).join('');
     const historyBlock = `
@@ -362,16 +374,17 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
             ${histHtml}
         </div>`;
         
-    const cardClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
+    const cardClass = isAlert ? 'card alert family-card' : (isHistory ? 'card history family-card' : 'card family-card');
 
-    let actionsHtml = isHistory ? `<button class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
-                ${showRenew ? `<button class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
-                <button class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>`;
+    let actionsHtml = isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
+        ${showRenew ? `<button type="button" class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
+        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border);" onclick="window.toggleFamilyHistory('${safeId}')">📜 Історія</button>
+        <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>`;
 
     return `
     <div class="${cardClass}">
         <div class="card-accent"></div>
-        <div class="card-body" onclick="window.toggleFamilyHistory('${safeId}')" style="cursor: pointer; padding-bottom: 5px; -webkit-tap-highlight-color: rgba(0,0,0,0.1);">
+        <div class="card-body">
             <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
             ${tagsHtml ? `<div class="card-row"><div class="card-row-val tags-wrap">${tagsHtml}</div></div>` : ''}
             <div class="card-dates single">
@@ -382,20 +395,16 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
             </div>
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
             ${historyBlock}
-        </div>
-        <div class="card-actions" style="padding: 0 15px 15px; margin-top: 0;">
-            ${actionsHtml}
+            <div class="card-actions">
+                ${actionsHtml}
+            </div>
         </div>
     </div>`;
 }
 
-window.toggleCross = async (id, type, val, isCrossed) => {
-    await updateDoc(doc(db, "batches", id), { [`crossed${type}`]: isCrossed ? arrayRemove(val) : arrayUnion(val) });
-};
-
 window.toggleFamilyHistory = (id) => {
     const el = document.getElementById(`history-${id}`);
-    if(el) el.classList.toggle('show');
+    if (el) el.classList.toggle('show');
 };
 
 window.renewFamily = async (id) => {
