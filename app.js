@@ -14,11 +14,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 enableIndexedDbPersistence(db).catch(() => {});
 
-// Utility functions for safe date parsing/formatting in local timezone
 const getLocalIsoDate = (ts) => {
     const d = new Date(ts);
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 };
+
 const getStampFromIso = (isoStr) => {
     if (!isoStr) return Date.now();
     const [y, m, d] = isoStr.split('-');
@@ -30,7 +30,7 @@ window.appMode = 'batches';
 window.currentBars = [];
 window.currentFamilies = [];
 window.currentFFamilies = [];
-window.currentFHistory = []; // Array of dates for Family audits
+window.currentFHistory = [];
 
 window.batchesData = {};
 window.familiesData = {};
@@ -97,7 +97,6 @@ document.getElementById('input-bar-val').addEventListener('keydown', e => { if (
 document.getElementById('input-family-val').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); window.addBarTag(true); } });
 document.getElementById('input-f-family-val').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); window.addFFamilyTag(); } });
 
-// --- УПРАВЛЕНИЕ АУДИТОМ СЕМЕЙ ---
 window.renderFHistory = () => {
     const container = document.getElementById('f-history-list');
     if(!container) return;
@@ -108,20 +107,24 @@ window.renderFHistory = () => {
         </div>
     `).join('');
 };
+
 window.addHistoryInput = () => {
     window.currentFHistory.push(getLocalIsoDate(Date.now()));
     window.renderFHistory();
     window.recalcNextCheck();
 };
+
 window.updateHistoryDate = (idx, val) => {
     window.currentFHistory[idx] = val;
     window.recalcNextCheck();
 };
+
 window.removeHistoryDate = (idx) => {
     window.currentFHistory.splice(idx, 1);
     window.renderFHistory();
     window.recalcNextCheck();
 };
+
 window.recalcNextCheck = () => {
     let maxDate = getStampFromIso(document.getElementById('input-f-created').value);
     window.currentFHistory.forEach(dStr => {
@@ -131,7 +134,6 @@ window.recalcNextCheck = () => {
     document.getElementById('input-f-next').value = getLocalIsoDate(maxDate + 864000000);
 };
 
-// --- СОХРАНЕНИЕ ---
 document.getElementById('add-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const editId = e.target.dataset.editId;
@@ -149,8 +151,8 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
                 pieces: document.getElementById('input-pieces').value || "",
                 comment: document.getElementById('input-comment').value,
                 graftDateStr: graftDate,
-                expectedHatchTimestamp: graftMs + (11 * 86400000),
-                selectionDateTimestamp: graftMs + (9 * 86400000),
+                expectedHatchTimestamp: graftMs + 950400000,
+                selectionDateTimestamp: graftMs + 777600000,
                 status: 'active'
             };
 
@@ -195,7 +197,6 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
     }
 });
 
-// --- СИНХРОНИЗАЦИЯ ---
 onSnapshot(query(collection(db, "batches"), orderBy("expectedHatchTimestamp", "asc")), (snapshot) => {
     const now = Date.now();
     const today = new Date().setHours(0, 0, 0, 0);
@@ -361,13 +362,16 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
             ${histHtml}
         </div>`;
         
-    const cardClass = isAlert ? 'card alert family-card' : (isHistory ? 'card history family-card' : 'card family-card');
+    const cardClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
 
-    // Добавлен role="button" и tabindex="0" для 100% кликабельности на телефонах
+    let actionsHtml = isHistory ? `<button class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
+                ${showRenew ? `<button class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
+                <button class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>`;
+
     return `
-    <div class="${cardClass}" onclick="window.toggleFamilyHistory(event, '${safeId}')" role="button" tabindex="0">
+    <div class="${cardClass}">
         <div class="card-accent"></div>
-        <div class="card-body">
+        <div class="card-body" onclick="window.toggleFamilyHistory('${safeId}')" style="cursor: pointer; padding-bottom: 5px; -webkit-tap-highlight-color: rgba(0,0,0,0.1);">
             <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
             ${tagsHtml ? `<div class="card-row"><div class="card-row-val tags-wrap">${tagsHtml}</div></div>` : ''}
             <div class="card-dates single">
@@ -378,11 +382,9 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
             </div>
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
             ${historyBlock}
-            <div class="card-actions">
-                ${isHistory ? `<button class="btn-action btn-danger" onclick="event.stopPropagation(); window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
-                ${showRenew ? `<button class="btn-action btn-success" onclick="event.stopPropagation(); window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
-                <button class="btn-action btn-edit" onclick="event.stopPropagation(); window.editFamily('${safeId}')">✏️ Изменить</button>`}
-            </div>
+        </div>
+        <div class="card-actions" style="padding: 0 15px 15px; margin-top: 0;">
+            ${actionsHtml}
         </div>
     </div>`;
 }
@@ -391,21 +393,9 @@ window.toggleCross = async (id, type, val, isCrossed) => {
     await updateDoc(doc(db, "batches", id), { [`crossed${type}`]: isCrossed ? arrayRemove(val) : arrayUnion(val) });
 };
 
-// Бронебойная логика нажатия для телефонов
-window.toggleFamilyHistory = (e, id) => {
-    if (e) {
-        let target = e.target;
-        // Защита от бага мобильных браузеров, когда клик попадает чисто в текст
-        if (target.nodeType === 3) target = target.parentNode; 
-        
-        // Если палец попал на любую кнопку или тег — игнорируем, историю не открываем
-        if (target.closest && target.closest('.btn-action, .btn-tag, .card-actions')) {
-            return;
-        }
-    }
-    // Открываем или закрываем историю
+window.toggleFamilyHistory = (id) => {
     const el = document.getElementById(`history-${id}`);
-    if (el) el.classList.toggle('show');
+    if(el) el.classList.toggle('show');
 };
 
 window.renewFamily = async (id) => {
@@ -434,7 +424,7 @@ window.deleteFromEdit = () => {
 
 window.editBatch = id => {
     const d = window.batchesData[id];
-    document.getElementById('input-date').value = getLocalIsoDate(d.expectedHatchTimestamp - (11 * 86400000));
+    document.getElementById('input-date').value = getLocalIsoDate(d.expectedHatchTimestamp - 950400000);
     document.getElementById('input-lineage').value = d.lineage;
     document.getElementById('input-pieces').value = d.pieces;
     document.getElementById('input-comment').value = d.comment || '';
@@ -504,7 +494,6 @@ window.cancelEdit = () => {
     document.getElementById('input-lineage').value = 'B-';
 };
 
-// Инициализация дат при загрузке
 document.getElementById('input-date').value = getLocalIsoDate(Date.now());
 document.getElementById('input-f-created').value = getLocalIsoDate(Date.now());
 document.getElementById('input-f-next').value = getLocalIsoDate(Date.now() + 864000000);
