@@ -117,8 +117,10 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
                 addDoc(collection(db, "batches"), data);
             }
         } else {
-            const d = new Date(document.getElementById('input-family-date').value);
-            const createdAt = isNaN(d.getTime()) ? Date.now() : d.getTime();
+            const dateStr = document.getElementById('input-family-date').value;
+            const [y, m, d] = dateStr.split('-');
+            const selectedDate = new Date(y, m - 1, d);
+            const createdAt = isNaN(selectedDate.getTime()) ? Date.now() : selectedDate.getTime();
             
             const data = {
                 families: window.currentFFamilies,
@@ -129,14 +131,20 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
             if (editId) {
                 const existing = window.familiesData[editId];
                 if(existing) {
-                    data.createdAt = existing.createdAt;
-                    data.nextCheckTimestamp = existing.nextCheckTimestamp;
-                    data.history = existing.history;
+                    data.createdAt = createdAt;
+                    data.history = existing.history || [];
+                    
+                    if (data.history.length > 0) {
+                        const lastCheck = data.history[data.history.length - 1];
+                        data.nextCheckTimestamp = lastCheck + 864000000;
+                    } else {
+                        data.nextCheckTimestamp = createdAt + 864000000;
+                    }
                 }
                 updateDoc(doc(db, "families", editId), data);
             } else {
                 data.createdAt = createdAt;
-                data.nextCheckTimestamp = Date.now() + 864000000;
+                data.nextCheckTimestamp = createdAt + 864000000;
                 data.history = [];
                 addDoc(collection(db, "families"), data);
             }
@@ -298,19 +306,21 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     const safeId = id.replace(/'/g, "\\'");
 
     let nClass = '';
+    let showRenew = false;
+    
     if (!isHistory) {
-        if (nextT - today < 0) nClass = 'overdue';
-        else if (nextT - today === 0) nClass = 'today';
-        else if (nextT - today === 86400000) nClass = 'soon';
+        if (nextT - today < 0) { nClass = 'overdue'; showRenew = true; }
+        else if (nextT - today === 0) { nClass = 'today'; showRenew = true; }
+        else if (nextT - today === 86400000) { nClass = 'soon'; showRenew = true; }
     }
 
-    const tagsHtml = (d.families || []).map(val => `<button class="btn-tag family-btn">${val}</button>`).join('');
+    const tagsHtml = (d.families || []).map(val => `<button class="btn-tag family-btn" onclick="event.stopPropagation()">${val}</button>`).join('');
     const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('ru-RU')}</div>`).join('');
     const historyBlock = `<div class="family-history" id="history-${safeId}"><div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('ru-RU')}</div>${histHtml}</div>`;
     const cardClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
 
     return `
-    <div class="${cardClass}">
+    <div class="${cardClass}" onclick="window.toggleFamilyHistory(event, '${safeId}')" style="cursor: pointer;">
         <div class="card-accent"></div>
         <div class="card-body">
             <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
@@ -321,11 +331,9 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
             ${historyBlock}
             <div class="card-actions">
-                ${isHistory ? `<button class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
-                <button class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">⏳ Продлить</button>
-                <button class="btn-action btn-edit" onclick="window.toggleFamilyHistory('${safeId}')">📜 История</button>
-                <button class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>
-                <button class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>`}
+                ${isHistory ? `<button class="btn-action btn-danger" onclick="event.stopPropagation(); window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
+                ${showRenew ? `<button class="btn-action btn-success" onclick="event.stopPropagation(); window.renewFamily('${safeId}')">⏳ Продлить</button>` : ''}
+                <button class="btn-action btn-edit" onclick="event.stopPropagation(); window.editFamily('${safeId}')">✏️ Изменить</button>`}
             </div>
         </div>
     </div>`;
@@ -335,7 +343,8 @@ window.toggleCross = async (id, type, val, isCrossed) => {
     await updateDoc(doc(db, "batches", id), { [`crossed${type}`]: isCrossed ? arrayRemove(val) : arrayUnion(val) });
 };
 
-window.toggleFamilyHistory = (id) => {
+window.toggleFamilyHistory = (e, id) => {
+    if (e && e.target.closest('button')) return;
     const el = document.getElementById(`history-${id}`);
     if(el) el.classList.toggle('show');
 };
