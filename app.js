@@ -368,16 +368,16 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     
     const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('ru-RU')}</div>`).join('');
     const historyBlock = `
-        <div class="family-history">
+        <div class="family-history" id="history-${safeId}">
             <div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('ru-RU')}</div>
             ${histHtml}
         </div>`;
         
-    const cardClass = isAlert ? 'card alert family-card' : (isHistory ? 'card history family-card' : 'card family-card');
+    const cardClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
 
     let actionsHtml = isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
         ${showRenew ? `<button type="button" class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
-        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border);" onclick="window.toggleFamilyHistory(this)">📜 Історія</button>
+        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border);" onclick="window.toggleFamilyHistory('${safeId}')">📜 Історія</button>
         <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>`;
 
     return `
@@ -401,14 +401,10 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     </div>`;
 }
 
-// Теперь функция ищет историю не по ID, а внутри той самой карточки, где нажата кнопка
-window.toggleFamilyHistory = (btn) => {
-    if (!btn) return;
-    const card = btn.closest('.card');
-    if (card) {
-        const historyEl = card.querySelector('.family-history');
-        if (historyEl) historyEl.classList.toggle('show');
-    }
+// ПРОСТАЯ И НАДЕЖНАЯ ФУНКЦИЯ ДЛЯ КНОПКИ ИСТОРИИ ПО ID
+window.toggleFamilyHistory = (id) => {
+    const el = document.getElementById(`history-${id}`);
+    if(el) el.classList.toggle('show');
 };
 
 window.renewFamily = async (id) => {
