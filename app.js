@@ -123,13 +123,11 @@ window.removeHistoryDate = (idx) => {
     window.recalcNextCheck();
 };
 window.recalcNextCheck = () => {
-    // Находим самую позднюю дату (или дату создания, если истории нет)
     let maxDate = getStampFromIso(document.getElementById('input-f-created').value);
     window.currentFHistory.forEach(dStr => {
         const t = getStampFromIso(dStr);
         if(t > maxDate && !isNaN(t)) maxDate = t;
     });
-    // Прибавляем ровно 10 дней и выставляем
     document.getElementById('input-f-next').value = getLocalIsoDate(maxDate + 864000000);
 };
 
@@ -168,7 +166,6 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
             const createdMs = getStampFromIso(document.getElementById('input-f-created').value);
             const nextMs = getStampFromIso(document.getElementById('input-f-next').value);
             
-            // Превращаем строки 'yyyy-mm-dd' в таймстемпы и сортируем
             const histArray = window.currentFHistory
                 .filter(d => d)
                 .map(d => getStampFromIso(d))
@@ -366,8 +363,9 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
         
     const cardClass = isAlert ? 'card alert family-card' : (isHistory ? 'card history family-card' : 'card family-card');
 
+    // Добавлен role="button" и tabindex="0" для 100% кликабельности на телефонах
     return `
-    <div class="${cardClass}" onclick="window.toggleFamilyHistory(event, '${safeId}')">
+    <div class="${cardClass}" onclick="window.toggleFamilyHistory(event, '${safeId}')" role="button" tabindex="0">
         <div class="card-accent"></div>
         <div class="card-body">
             <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
@@ -393,10 +391,16 @@ window.toggleCross = async (id, type, val, isCrossed) => {
     await updateDoc(doc(db, "batches", id), { [`crossed${type}`]: isCrossed ? arrayRemove(val) : arrayUnion(val) });
 };
 
+// Бронебойная логика нажатия для телефонов
 window.toggleFamilyHistory = (e, id) => {
-    if (e && e.target.closest('.btn-action, .btn-tag')) return;
+    if (e) {
+        // Защита от кликов по внутренним кнопкам, если пользователь промазал
+        let el = e.target;
+        if (el.nodeType === 3) el = el.parentNode; // Если кликнули на текст внутри блока
+        if (el.closest && el.closest('.btn-action, .btn-tag')) return;
+    }
     const el = document.getElementById(`history-${id}`);
-    if(el) el.classList.toggle('show');
+    if (el) el.classList.toggle('show');
 };
 
 window.renewFamily = async (id) => {
