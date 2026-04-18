@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ownerka.Бджоляр</title>
+    <title>Довідник</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0F0F0F">
     <meta name="mobile-web-app-capable" content="yes">
@@ -53,7 +53,6 @@
         .mobile-header {
             height: var(--header-h);
             background: var(--bg2);
-            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -79,6 +78,32 @@
             color: var(--honey);
         }
 
+        .top-mode-tabs {
+            display: flex;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: var(--header-h);
+            z-index: 190;
+        }
+        .mode-tab {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-family: 'Unbounded', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .mode-tab.active {
+            color: var(--honey);
+            border-bottom-color: var(--honey);
+        }
+
         .tabs-viewport { overflow: hidden; position: relative; }
         .tabs-track {
             display: flex;
@@ -88,7 +113,7 @@
         }
         .tab-pane {
             width: calc(100% / 3);
-            min-height: calc(100dvh - var(--header-h) - var(--nav-h));
+            min-height: calc(100dvh - var(--header-h) - 45px - var(--nav-h));
             padding: 18px 14px calc(var(--fab-size) + 88px);
             flex-shrink: 0;
         }
@@ -230,15 +255,32 @@
         }
         .bar-btn { background: var(--bar-bg); border-color: var(--bar-border); color: var(--bar-text); }
         .family-btn { background: var(--family-bg); border-color: var(--family-border); color: var(--family-text); }
+        
         .card-dates {
             display: grid; grid-template-columns: 1fr 1fr;
             gap: 7px; margin-top: 11px;
         }
-        .date-chip { background: var(--bg3); border-radius: 10px; padding: 7px 9px; text-align: center; }
+        .card-dates.single { grid-template-columns: 1fr; }
+        .date-chip { 
+            background: var(--bg3); 
+            border-radius: 10px; 
+            padding: 7px 9px; 
+            text-align: center; 
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
         .date-chip-label { font-size: 0.67rem; color: var(--text-muted); margin-bottom: 1px; }
         .date-chip-val { font-weight: 600; font-size: 0.87rem; }
-        .date-chip.overdue .date-chip-val { color: var(--danger); }
-        .date-chip.soon .date-chip-val { color: var(--honey); }
+        
+        .date-chip.soon { border-color: #FF9800; }
+        .date-chip.soon .date-chip-val { color: #FF9800; }
+        
+        .date-chip.today { border-color: #F44336; }
+        .date-chip.today .date-chip-val { color: #F44336; }
+        
+        .date-chip.overdue { border-color: #555; opacity: 0.55; }
+        .date-chip.overdue .date-chip-val { color: #888; }
+        
         .card-pieces {
             display: inline-flex; align-items: center; gap: 4px;
             background: var(--bg3); border-radius: 8px;
@@ -250,7 +292,8 @@
             background: var(--bg3); border-radius: 8px;
             padding: 7px 10px; border-left: 2px solid var(--honey); font-style: italic;
         }
-        .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 11px; }
+        .card-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+        .card-actions .btn-action { flex: 1; min-width: calc(50% - 7px); }
         .btn-action {
             padding: 9px; border-radius: 9px; border: none;
             font-weight: 700; font-size: 0.78rem; cursor: pointer;
@@ -260,6 +303,17 @@
         .btn-action:active { transform: scale(0.95); }
         .btn-edit { background: rgba(100,160,255,0.12); color: var(--bar-text); border: 1px solid var(--bar-border); }
         .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(255,77,77,0.18); }
+        .btn-success { background: rgba(76,175,130,0.15); color: var(--success); border: 1px solid rgba(76,175,130,0.3); }
+
+        .family-history {
+            display: none;
+            margin-top: 11px;
+            padding-top: 11px;
+            border-top: 1px dashed var(--border);
+            font-size: 0.82rem;
+        }
+        .family-history.show { display: block; }
+        .history-item { color: var(--text-muted); margin-bottom: 5px; }
 
         .empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); grid-column: 1/-1; }
         .empty-state-icon { font-size: 2.5rem; margin-bottom: 10px; opacity: 0.3; }
@@ -365,8 +419,17 @@
         .badge-del:active { opacity: 0.55; }
         .badge-bar { background: var(--bar-bg); color: var(--bar-text); border-color: var(--bar-border); }
         .badge-family { background: var(--family-bg); color: var(--family-text); border-color: var(--family-border); }
+
         .form-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 22px; }
         .form-actions.has-cancel { grid-template-columns: 1fr 1fr; }
+        .form-actions.is-editing {
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas: "save save" "del cancel";
+        }
+        .form-actions.is-editing .btn-submit { grid-area: save; }
+        .form-actions.is-editing #delete-edit-btn { grid-area: del; }
+        .form-actions.is-editing #cancel-edit-btn { grid-area: cancel; }
+
         .btn-submit {
             background: var(--honey); color: #000; border: none;
             padding: 14px; border-radius: 11px;
@@ -380,15 +443,10 @@
             border: 1px solid var(--border); padding: 14px; border-radius: 11px;
             font-family: 'Unbounded', sans-serif; font-size: 0.75rem; font-weight: 700; cursor: pointer;
         }
-
-        .swipe-hint {
-            text-align: center; color: var(--text-muted);
-            font-size: 0.7rem; padding: 5px 0 2px;
-            opacity: 0; animation: fadeHint 5s ease forwards;
-        }
-        @keyframes fadeHint {
-            0%,100% { opacity: 0; }
-            20%,80% { opacity: 0.55; }
+        .btn-delete-form {
+            background: var(--danger-bg); color: var(--danger);
+            border: 1px solid rgba(255,77,77,0.18); padding: 14px; border-radius: 11px;
+            font-family: 'Unbounded', sans-serif; font-size: 0.75rem; font-weight: 700; cursor: pointer;
         }
 
         .desktop-sidebar { display: none; }
@@ -398,9 +456,9 @@
             body { display: flex; height: 100dvh; overflow: hidden; }
 
             .mobile-header { display: none; }
+            .top-mode-tabs { display: none; }
             .bottom-nav { display: none; }
             .tabs-viewport { display: none; }
-            .swipe-hint { display: none; }
             .fab { display: none; }
 
             .desktop-sidebar {
@@ -475,6 +533,12 @@
             .sidebar-fab-btn:hover { opacity: 0.88; }
             .sidebar-fab-btn:active { transform: scale(0.97); }
 
+            .desktop-mode-tabs {
+                display: flex;
+                background: var(--bg2);
+                border-bottom: 1px solid var(--border);
+            }
+
             .desktop-main {
                 display: block;
                 flex: 1; overflow-y: auto;
@@ -512,15 +576,24 @@
 
 <header class="mobile-header">
     <div class="header-inner">
-        <span class="header-bee">🐝</span>
-        <span class="header-title">OWNERKA.БДЖОЛЯР</span>
+        <span class="header-bee">📖</span>
+        <span class="header-title">ДОВІДНИК</span>
     </div>
 </header>
 
+<div class="top-mode-tabs">
+    <button class="mode-tab active" data-mode="batches" onclick="window.setAppMode('batches')">МАТКИ</button>
+    <button class="mode-tab" data-mode="families" onclick="window.setAppMode('families')">СІМ'Ї</button>
+</div>
+
 <aside class="desktop-sidebar">
     <div class="sidebar-logo">
-        <span class="sidebar-bee">🐝</span>
-        <div class="sidebar-title">OWNERKA<br>БДЖОЛЯР</div>
+        <span class="sidebar-bee">📖</span>
+        <div class="sidebar-title">ДОВІДНИК</div>
+    </div>
+    <div class="desktop-mode-tabs">
+        <button class="mode-tab active" data-mode="batches" onclick="window.setAppMode('batches')">МАТКИ</button>
+        <button class="mode-tab" data-mode="families" onclick="window.setAppMode('families')">СІМ'Ї</button>
     </div>
     <nav class="sidebar-nav">
         <button class="sidebar-item active" onclick="switchDesktop(0,this)">
@@ -539,7 +612,7 @@
     </nav>
     <div class="sidebar-fab-wrap">
         <button class="sidebar-fab-btn" onclick="openSheet()">
-            ＋ &nbsp;Нова партія
+            ＋ &nbsp;Створити
         </button>
     </div>
 </aside>
@@ -553,7 +626,7 @@
         </div>
     </div>
     <div class="desktop-tab" id="dtab-1">
-        <p class="section-title">📋 Активні партії</p>
+        <p class="section-title">📋 Активні</p>
         <div id="d-active-list" class="grid-list">
             <div class="loading-shimmer"></div>
             <div class="loading-shimmer"></div>
@@ -577,7 +650,7 @@
             </div>
         </div>
         <div class="tab-pane" id="tab-add">
-            <p class="section-title">📋 Активні партії</p>
+            <p class="section-title">📋 Активні</p>
             <div id="active-list" class="grid-list">
                 <div class="loading-shimmer"></div>
             </div>
@@ -590,58 +663,77 @@
         </div>
     </div>
 </div>
-<p class="swipe-hint">← свайп для переключення →</p>
 
-<button class="fab" id="fab" onclick="openSheet()" aria-label="Нова партія">＋</button>
+<button class="fab" id="fab" onclick="openSheet()" aria-label="Створити">＋</button>
 
 <div class="sheet-overlay" id="sheet-overlay" onclick="closeSheet()"></div>
 
 <div class="bottom-sheet" id="bottom-sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-        <span class="sheet-title" id="sheet-title">🐝 Нова партія</span>
+        <span class="sheet-title" id="sheet-title">📖 Нова партія</span>
         <button class="sheet-close" onclick="closeSheet()">✕</button>
     </div>
     <div class="form-body">
         <form id="add-form">
-            <div class="form-row">
-                <div class="form-section">
-                    <label class="form-label">Дата прищеплення</label>
-                    <input class="form-input" type="date" id="input-date" required>
+            <div id="form-batches-fields">
+                <div class="form-row">
+                    <div class="form-section">
+                        <label class="form-label">Дата прищеплення</label>
+                        <input class="form-input" type="date" id="input-date" required>
+                    </div>
+                    <div class="form-section">
+                        <label class="form-label">Лінія</label>
+                        <input class="form-input" type="text" id="input-lineage" value="B-" placeholder="B-1">
+                    </div>
                 </div>
                 <div class="form-section">
-                    <label class="form-label">Лінія</label>
-                    <input class="form-input" type="text" id="input-lineage" value="B-" placeholder="B-1">
+                    <label class="form-label">Сімейства</label>
+                    <div class="tag-input-row">
+                        <input class="form-input" type="number" id="input-family-val" placeholder="Номер сімейства">
+                        <button type="button" class="btn-add-tag" onclick="window.addBarTag(true)">+</button>
+                    </div>
+                    <div class="tags-container" id="family-tags-container"></div>
+                </div>
+                <div class="form-section">
+                    <label class="form-label">Планки</label>
+                    <div class="tag-input-row">
+                        <input class="form-input" type="text" id="input-bar-val" placeholder="Номер планки">
+                        <button type="button" class="btn-add-tag" onclick="window.addBarTag(false)">+</button>
+                    </div>
+                    <div class="tags-container" id="bar-tags-container"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-section">
+                        <label class="form-label">Кількість (шт)</label>
+                        <input class="form-input" type="number" id="input-pieces" placeholder="0">
+                    </div>
                 </div>
             </div>
+
+            <div id="form-families-fields" style="display:none;">
+                <div class="form-section">
+                    <label class="form-label">Дата створення</label>
+                    <input class="form-input" type="date" id="input-family-date">
+                </div>
+                <div class="form-section">
+                    <label class="form-label">Сімейства</label>
+                    <div class="tag-input-row">
+                        <input class="form-input" type="number" id="input-f-family-val" placeholder="Номер сімейства">
+                        <button type="button" class="btn-add-tag" onclick="window.addFFamilyTag()">+</button>
+                    </div>
+                    <div class="tags-container" id="f-family-tags-container"></div>
+                </div>
+            </div>
+
             <div class="form-section">
-                <label class="form-label">Сімейства</label>
-                <div class="tag-input-row">
-                    <input class="form-input" type="number" id="input-family-val" placeholder="Номер сімейства">
-                    <button type="button" class="btn-add-tag" onclick="window.addFamilyTag()">+</button>
-                </div>
-                <div class="tags-container" id="family-tags-container"></div>
+                <label class="form-label">Коментар</label>
+                <input class="form-input" type="text" id="input-comment" placeholder="...">
             </div>
-            <div class="form-section">
-                <label class="form-label">Планки</label>
-                <div class="tag-input-row">
-                    <input class="form-input" type="text" id="input-bar-val" placeholder="Номер планки">
-                    <button type="button" class="btn-add-tag" onclick="window.addBarTag()">+</button>
-                </div>
-                <div class="tags-container" id="bar-tags-container"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-section">
-                    <label class="form-label">Кількість (шт)</label>
-                    <input class="form-input" type="number" id="input-pieces" placeholder="0">
-                </div>
-                <div class="form-section">
-                    <label class="form-label">Коментар</label>
-                    <input class="form-input" type="text" id="input-comment" placeholder="...">
-                </div>
-            </div>
+            
             <div class="form-actions" id="form-actions">
                 <button type="submit" class="btn-submit" id="submit-btn">ЗБЕРЕГТИ</button>
+                <button type="button" class="btn-delete-form" id="delete-edit-btn" style="display:none;" onclick="window.deleteFromEdit()">ВИДАЛИТИ</button>
                 <button type="button" class="btn-cancel-form" id="cancel-edit-btn" style="display:none;" onclick="window.cancelEdit()">СКАСУВАТИ</button>
             </div>
         </form>
@@ -704,7 +796,7 @@
 
     function switchDesktop(idx, btn) {
         document.querySelectorAll('.desktop-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
-        document.querySelectorAll('.sidebar-item').forEach((b,i) => b.classList.toggle('active', i===idx));
+        document.querySelectorAll('.sidebar-nav .sidebar-item').forEach((b,i) => b.classList.toggle('active', i===idx));
     }
 
     function openSheet(editMode=false) {
@@ -712,7 +804,9 @@
         document.getElementById('bottom-sheet').classList.add('open');
         const fab = document.getElementById('fab');
         if (fab) fab.classList.add('is-open');
-        if (!editMode) document.getElementById('sheet-title').textContent = '🐝 Нова партія';
+        if (!editMode) {
+            document.getElementById('sheet-title').textContent = window.appMode === 'batches' ? '📖 Нова партія' : '🏠 Нова перевірка сім\'ї';
+        }
     }
     function closeSheet() {
         document.getElementById('sheet-overlay').classList.remove('open');
@@ -757,6 +851,7 @@
         }
     }
     setLocalToday('input-date');
+    setLocalToday('input-family-date');
 </script>
 
 <script type="module" src="app.js"></script>
