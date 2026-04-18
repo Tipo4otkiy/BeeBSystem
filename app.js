@@ -17,9 +17,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 enableIndexedDbPersistence(db).catch(() => {});
 
-// ═══════════════════════════════════════════════════
-// TAG MANAGEMENT
-// ═══════════════════════════════════════════════════
 window.currentBars = [];
 window.currentFamilies = [];
 
@@ -62,7 +59,6 @@ function renderTags() {
         ).join('');
 }
 
-// Enter key support in tag inputs
 document.getElementById('input-bar-val').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); window.addBarTag(); }
 });
@@ -72,10 +68,7 @@ document.getElementById('input-family-val').addEventListener('keydown', e => {
 
 window.batchesData = {};
 
-// ═══════════════════════════════════════════════════
-// FORM SUBMIT
-// ═══════════════════════════════════════════════════
-document.getElementById('add-form').addEventListener('submit', async (e) => {
+document.getElementById('add-form').addEventListener('submit', (e) => {
     e.preventDefault();
     const editId = e.target.dataset.editId;
     const graftDate = new Date(document.getElementById('input-date').value);
@@ -97,37 +90,29 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
         status: 'active'
     };
 
+    closeSheet();
+
     try {
         if (editId) {
-            await updateDoc(doc(db, "batches", editId), data);
+            updateDoc(doc(db, "batches", editId), data);
             window.cancelEdit();
-            closeSheet();
-            showToast('✅ Изменения сохранены');
         } else {
             data.createdAt = Date.now();
             data.crossedBars = [];
             data.crossedFamilies = [];
-            await addDoc(collection(db, "batches"), data);
+            addDoc(collection(db, "batches"), data);
             e.target.reset();
-            document.getElementById('input-date').valueAsDate = new Date();
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            document.getElementById('input-date').value = new Date(Date.now() - tzoffset).toISOString().slice(0, 10);
             document.getElementById('input-lineage').value = 'B-';
             window.currentBars = [];
             window.currentFamilies = [];
             renderTags();
-            closeSheet();
-            showToast('🐝 Партия добавлена');
         }
     } catch (err) {
-        showToast('❌ Ошибка сохранения', 'error');
+        console.error(err);
     }
 });
-
-// ═══════════════════════════════════════════════════
-// SNAPSHOT & RENDER (BUG FIX: no DOM thrashing, no auto-archive loop)
-// ═══════════════════════════════════════════════════
-
-// Track which IDs have already been auto-archived to prevent infinite loop
-const autoArchivedSet = new Set();
 
 onSnapshot(
     query(collection(db, "batches"), orderBy("expectedHatchTimestamp", "asc")),
@@ -137,9 +122,6 @@ onSnapshot(
         const tomorrow = today + 86400000;
         const archiveLimit = 2 * 24 * 60 * 60 * 1000;
 
-        // Collect IDs needing auto-archive — do it OUTSIDE render to avoid feedback loop
-        const toArchive = [];
-
         const lists = { events: '', active: '', history: '' };
 
         snapshot.forEach(docSnap => {
@@ -147,34 +129,24 @@ onSnapshot(
             const id = docSnap.id;
             window.batchesData[id] = d;
 
-            // Auto-archive check — only queue once per document
-            if (
-                d.status === 'active' &&
-                now > (d.expectedHatchTimestamp + archiveLimit) &&
-                !autoArchivedSet.has(id)
-            ) {
-                autoArchivedSet.add(id);
-                toArchive.push(id);
-                // Render as history immediately (don't skip)
-                lists.history += buildCard(id, { ...d, status: 'history' }, today, tomorrow);
-                return;
-            }
+            const isEffectivelyHistory = d.status === 'history' || 
+                (d.status === 'active' && now > (d.expectedHatchTimestamp + archiveLimit));
 
-            const html = buildCard(id, d, today, tomorrow);
+            const renderData = { ...d, status: isEffectivelyHistory ? 'history' : d.status };
+            const html = buildCard(id, renderData, today, tomorrow);
 
-            if (d.status === 'history') {
+            if (isEffectivelyHistory) {
                 lists.history += html;
             } else {
                 lists.active += html;
                 const hatchTime = new Date(d.expectedHatchTimestamp).setHours(0, 0, 0, 0);
                 const selectTime = new Date(d.selectionDateTimestamp).setHours(0, 0, 0, 0);
                 if (hatchTime <= tomorrow || selectTime <= tomorrow) {
-                    lists.events += buildCard(id, d, today, tomorrow, true);
+                    lists.events += buildCard(id, renderData, today, tomorrow, true);
                 }
             }
         });
 
-        // Update DOM — single pass, write to both mobile and desktop containers
         const emptyEv = emptyState('🌿', 'Термінових подій немає');
         const emptyAc = emptyState('🍯', 'Активних партій немає');
         const emptyHi = emptyState('📦', 'Архів порожній');
@@ -183,7 +155,6 @@ onSnapshot(
         const acHtml = lists.active || emptyAc;
         const hiHtml = lists.history || emptyHi;
 
-        // Mobile
         const evEl = document.getElementById('events-list');
         const acEl = document.getElementById('active-list');
         const hiEl = document.getElementById('history-list');
@@ -191,7 +162,6 @@ onSnapshot(
         if (acEl) acEl.innerHTML = acHtml;
         if (hiEl) hiEl.innerHTML = hiHtml;
 
-        // Desktop
         const devEl = document.getElementById('d-events-list');
         const dacEl = document.getElementById('d-active-list');
         const dhiEl = document.getElementById('d-history-list');
@@ -199,7 +169,6 @@ onSnapshot(
         if (dacEl) dacEl.innerHTML = acHtml;
         if (dhiEl) dhiEl.innerHTML = hiHtml;
 
-        // Events dot/badge
         const dot = document.getElementById('events-dot');
         if (dot) dot.classList.toggle('visible', lists.events !== '');
         const badge = document.getElementById('desktop-events-badge');
@@ -208,11 +177,6 @@ onSnapshot(
             badge.textContent = count || '';
             badge.classList.toggle('visible', lists.events !== '');
         }
-
-        // Fire archive updates after render (async, won't trigger extra onSnapshot loops due to Set guard)
-        toArchive.forEach(id => {
-            updateDoc(doc(db, "batches", id), { status: 'history' });
-        });
     }
 );
 
@@ -283,11 +247,6 @@ function buildCard(id, d, today, tomorrow, isAlert = false) {
     </div>`;
 }
 
-// ═══════════════════════════════════════════════════
-// ACTIONS
-// ═══════════════════════════════════════════════════
-
-// BUG FIX: was using same expression for both branches
 window.toggleCross = async (id, type, val, isCrossed) => {
     const field = `crossed${type}`;
     await updateDoc(doc(db, "batches", id), {
@@ -298,7 +257,6 @@ window.toggleCross = async (id, type, val, isCrossed) => {
 window.deleteBatch = id => {
     if (confirm("Удалить навсегда?")) {
         deleteDoc(doc(db, "batches", id));
-        showToast('🗑 Удалено');
     }
 };
 
@@ -331,6 +289,8 @@ window.cancelEdit = () => {
     document.getElementById('submit-btn').textContent = 'СОХРАНИТЬ';
     document.getElementById('cancel-edit-btn').style.display = 'none';
     document.getElementById('form-actions').classList.remove('has-cancel');
-    document.getElementById('input-date').valueAsDate = new Date();
+    
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    document.getElementById('input-date').value = new Date(Date.now() - tzoffset).toISOString().slice(0, 10);
     document.getElementById('input-lineage').value = 'B-';
 };

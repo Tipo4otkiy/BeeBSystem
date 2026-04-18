@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Бджоляр</title>
+    <title>Ownerka.Бджоляр</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0F0F0F">
     <meta name="mobile-web-app-capable" content="yes">
@@ -13,8 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --honey: #F5A623;
-            --honey-dark: #C8841A;
+            --honey: #4CAF50;
+            --honey-dark: #388E3C;
             --bg: #0F0F0F;
             --bg2: #1A1A1A;
             --bg3: #242424;
@@ -47,9 +47,9 @@
             font-size: 15px;
             line-height: 1.5;
             overflow-x: hidden;
+            overscroll-behavior-y: none;
         }
 
-        /* ══════ MOBILE HEADER ══════ */
         .mobile-header {
             height: var(--header-h);
             background: var(--bg2);
@@ -64,7 +64,7 @@
         .header-inner { display: flex; align-items: center; gap: 9px; }
         .header-bee {
             font-size: 1.5rem;
-            filter: drop-shadow(0 0 10px rgba(245,166,35,0.7));
+            filter: drop-shadow(0 0 10px rgba(76,175,80,0.7));
             animation: beeBob 3s ease-in-out infinite;
         }
         @keyframes beeBob {
@@ -79,7 +79,6 @@
             color: var(--honey);
         }
 
-        /* ══════ SWIPE TABS (mobile) ══════ */
         .tabs-viewport { overflow: hidden; position: relative; }
         .tabs-track {
             display: flex;
@@ -94,7 +93,6 @@
             flex-shrink: 0;
         }
 
-        /* ══════ BOTTOM NAV (mobile) ══════ */
         .bottom-nav {
             position: fixed;
             bottom: 0; left: 0; right: 0;
@@ -137,7 +135,6 @@
         }
         .nav-dot.visible { display: block; }
 
-        /* ══════ FAB ══════ */
         .fab {
             position: fixed;
             bottom: calc(var(--nav-h) + 14px);
@@ -153,7 +150,7 @@
             font-weight: 900;
             line-height: 1;
             cursor: pointer;
-            box-shadow: 0 4px 22px rgba(245,166,35,0.55), 0 2px 8px rgba(0,0,0,0.6);
+            box-shadow: 0 4px 22px rgba(76,175,80,0.55), 0 2px 8px rgba(0,0,0,0.6);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -163,7 +160,7 @@
         }
         .fab:hover {
             transform: scale(1.1);
-            box-shadow: 0 6px 30px rgba(245,166,35,0.7), 0 2px 8px rgba(0,0,0,0.5);
+            box-shadow: 0 6px 30px rgba(76,175,80,0.7), 0 2px 8px rgba(0,0,0,0.5);
         }
         .fab:active { transform: scale(0.92); }
         .fab.is-open {
@@ -173,7 +170,6 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.6);
         }
 
-        /* ══════ CARDS ══════ */
         .section-title {
             font-family: 'Unbounded', sans-serif;
             font-size: 0.7rem; font-weight: 700;
@@ -199,7 +195,7 @@
         .card:active { transform: scale(0.985); }
         .card-accent { height: 3px; background: var(--honey); }
         .card.alert { border-color: rgba(255,77,77,0.22); }
-        .card.alert .card-accent { background: linear-gradient(90deg, var(--danger), #FF8C00); }
+        .card.alert .card-accent { background: linear-gradient(90deg, var(--danger), #FFC107); }
         .card.history { opacity: 0.6; transition: opacity 0.2s; }
         .card.history:hover { opacity: 1; }
         .card.history .card-accent { background: #333; }
@@ -221,8 +217,8 @@
         .card-row-val { flex: 1; }
         .tags-wrap { display: flex; flex-wrap: wrap; gap: 4px; }
         .btn-tag {
-            border: 1px solid; padding: 3px 9px;
-            border-radius: 20px; font-weight: 600; font-size: 0.8rem;
+            border: 1px solid; padding: 6px 14px;
+            border-radius: 20px; font-weight: 600; font-size: 0.95rem;
             cursor: pointer; transition: all 0.15s;
             font-family: 'Golos Text', sans-serif;
         }
@@ -265,7 +261,6 @@
         .btn-edit { background: rgba(100,160,255,0.12); color: var(--bar-text); border: 1px solid var(--bar-border); }
         .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(255,77,77,0.18); }
 
-        /* Empty & shimmer */
         .empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); grid-column: 1/-1; }
         .empty-state-icon { font-size: 2.5rem; margin-bottom: 10px; opacity: 0.3; }
         .empty-state-text { font-size: 0.88rem; }
@@ -280,7 +275,6 @@
             100% { background-position: -200% 0; }
         }
 
-        /* ══════ SHEET OVERLAY ══════ */
         .sheet-overlay {
             position: fixed; inset: 0;
             background: rgba(0,0,0,0.72);
@@ -292,7 +286,6 @@
         }
         .sheet-overlay.open { opacity: 1; pointer-events: all; }
 
-        /* ══════ BOTTOM SHEET (mobile) ══════ */
         .bottom-sheet {
             position: fixed;
             bottom: 0; left: 0; right: 0;
@@ -333,7 +326,6 @@
         }
         .sheet-close:hover { background: var(--border); }
 
-        /* ══════ FORM ══════ */
         .form-body { padding: 6px 18px 36px; }
         .form-section { margin-bottom: 18px; }
         .form-label {
@@ -365,8 +357,8 @@
         .tags-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
         .badge-del {
             display: inline-flex; align-items: center; gap: 4px;
-            padding: 4px 9px; border-radius: 20px;
-            font-weight: 600; font-size: 0.8rem;
+            padding: 5px 12px; border-radius: 20px;
+            font-weight: 600; font-size: 0.9rem;
             cursor: pointer; border: 1px solid;
             transition: opacity 0.15s;
         }
@@ -389,23 +381,6 @@
             font-family: 'Unbounded', sans-serif; font-size: 0.75rem; font-weight: 700; cursor: pointer;
         }
 
-        /* ══════ TOAST ══════ */
-        .toast {
-            position: fixed;
-            bottom: calc(var(--nav-h) + var(--fab-size) + 26px);
-            left: 50%;
-            transform: translateX(-50%) translateY(16px);
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: 10px; padding: 9px 16px;
-            font-size: 0.83rem; font-weight: 600;
-            z-index: 1000; opacity: 0;
-            transition: all 0.28s; white-space: nowrap; pointer-events: none;
-        }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        .toast.success { border-color: var(--success); color: var(--success); }
-        .toast.error { border-color: var(--danger); color: var(--danger); }
-
-        /* swipe hint */
         .swipe-hint {
             text-align: center; color: var(--text-muted);
             font-size: 0.7rem; padding: 5px 0 2px;
@@ -416,24 +391,18 @@
             20%,80% { opacity: 0.55; }
         }
 
-        /* ══════════════════════════════════════
-           DESKTOP (≥ 800px)
-        ══════════════════════════════════════ */
         .desktop-sidebar { display: none; }
         .desktop-main { display: none; }
 
         @media (min-width: 800px) {
             body { display: flex; height: 100dvh; overflow: hidden; }
 
-            /* hide mobile-only */
             .mobile-header { display: none; }
             .bottom-nav { display: none; }
             .tabs-viewport { display: none; }
             .swipe-hint { display: none; }
-            /* FAB hidden on desktop (sidebar button instead) */
             .fab { display: none; }
 
-            /* ── Sidebar ── */
             .desktop-sidebar {
                 display: flex;
                 flex-direction: column;
@@ -450,7 +419,7 @@
             }
             .sidebar-bee {
                 font-size: 1.6rem;
-                filter: drop-shadow(0 0 10px rgba(245,166,35,0.7));
+                filter: drop-shadow(0 0 10px rgba(76,175,80,0.7));
                 animation: beeBob 3s ease-in-out infinite;
             }
             .sidebar-title {
@@ -474,7 +443,7 @@
                 position: relative;
             }
             .sidebar-item:hover { background: var(--bg3); color: var(--text); }
-            .sidebar-item.active { background: rgba(245,166,35,0.1); color: var(--honey); }
+            .sidebar-item.active { background: rgba(76,175,80,0.1); color: var(--honey); }
             .sidebar-item-icon { font-size: 1.1rem; }
             .sidebar-item-badge {
                 margin-left: auto;
@@ -500,13 +469,12 @@
                 display: flex; align-items: center;
                 justify-content: center; gap: 8px;
                 letter-spacing: 0.04em;
-                box-shadow: 0 4px 18px rgba(245,166,35,0.35);
+                box-shadow: 0 4px 18px rgba(76,175,80,0.35);
                 transition: opacity 0.15s, transform 0.1s;
             }
             .sidebar-fab-btn:hover { opacity: 0.88; }
             .sidebar-fab-btn:active { transform: scale(0.97); }
 
-            /* ── Main content ── */
             .desktop-main {
                 display: block;
                 flex: 1; overflow-y: auto;
@@ -517,7 +485,6 @@
             .desktop-tab { display: none; }
             .desktop-tab.active { display: block; }
 
-            /* ── Desktop modal (centered, not bottom sheet) ── */
             .bottom-sheet {
                 bottom: auto; left: 50%; right: auto;
                 top: 50%;
@@ -533,14 +500,6 @@
                 opacity: 1;
             }
             .sheet-handle { display: none; }
-
-            /* Toast on desktop */
-            .toast {
-                bottom: 24px;
-                left: calc(var(--sidebar-w) + 50%);
-                transform: translateX(-50%) translateY(16px);
-            }
-            .toast.show { transform: translateX(-50%) translateY(0); }
         }
 
         @media (min-width: 1100px) {
@@ -551,15 +510,13 @@
 </head>
 <body>
 
-<!-- ── MOBILE HEADER ── -->
 <header class="mobile-header">
     <div class="header-inner">
         <span class="header-bee">🐝</span>
-        <span class="header-title">БДЖОЛЯР</span>
+        <span class="header-title">OWNERKA.БДЖОЛЯР</span>
     </div>
 </header>
 
-<!-- ── DESKTOP SIDEBAR ── -->
 <aside class="desktop-sidebar">
     <div class="sidebar-logo">
         <span class="sidebar-bee">🐝</span>
@@ -587,7 +544,6 @@
     </div>
 </aside>
 
-<!-- ── DESKTOP MAIN ── -->
 <main class="desktop-main">
     <div class="desktop-tab active" id="dtab-0">
         <p class="section-title">🚨 Термінові події</p>
@@ -611,7 +567,6 @@
     </div>
 </main>
 
-<!-- ── MOBILE SWIPE TABS ── -->
 <div class="tabs-viewport" id="tabs-viewport">
     <div class="tabs-track" id="tabs-track">
         <div class="tab-pane" id="tab-events">
@@ -637,13 +592,10 @@
 </div>
 <p class="swipe-hint">← свайп для переключення →</p>
 
-<!-- ── FAB (mobile) ── -->
 <button class="fab" id="fab" onclick="openSheet()" aria-label="Нова партія">＋</button>
 
-<!-- Sheet Overlay -->
 <div class="sheet-overlay" id="sheet-overlay" onclick="closeSheet()"></div>
 
-<!-- Bottom Sheet / Modal -->
 <div class="bottom-sheet" id="bottom-sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
@@ -696,7 +648,6 @@
     </div>
 </div>
 
-<!-- Bottom Nav (mobile) -->
 <nav class="bottom-nav">
     <button class="nav-btn active" onclick="switchTab(0,this)">
         <span class="nav-icon">🚨</span>
@@ -713,18 +664,7 @@
     </button>
 </nav>
 
-<div class="toast" id="toast"></div>
-
 <script>
-    // ── TOAST ──
-    function showToast(msg, type='success') {
-        const t = document.getElementById('toast');
-        t.textContent = msg;
-        t.className = `toast ${type} show`;
-        setTimeout(() => t.className = 'toast', 2800);
-    }
-
-    // ── MOBILE TABS ──
     let currentTab = 0;
     const track = document.getElementById('tabs-track');
 
@@ -736,7 +676,6 @@
         window.scrollTo(0,0);
     }
 
-    // Swipe gestures
     let txS=0, tyS=0, swiping=false;
     const vp = document.getElementById('tabs-viewport');
     vp.addEventListener('touchstart', e => {
@@ -763,13 +702,11 @@
         swiping = false;
     }, {passive:true});
 
-    // ── DESKTOP TABS ──
     function switchDesktop(idx, btn) {
         document.querySelectorAll('.desktop-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
         document.querySelectorAll('.sidebar-item').forEach((b,i) => b.classList.toggle('active', i===idx));
     }
 
-    // ── SHEET ──
     function openSheet(editMode=false) {
         document.getElementById('sheet-overlay').classList.add('open');
         document.getElementById('bottom-sheet').classList.add('open');
@@ -787,7 +724,6 @@
         }
     }
 
-    // Drag handle to dismiss (mobile)
     let shY=0, draggingSheet=false;
     const sh = document.getElementById('bottom-sheet');
     sh.addEventListener('touchstart', e => {
@@ -798,8 +734,11 @@
     sh.addEventListener('touchmove', e => {
         if (!draggingSheet) return;
         const dy = e.touches[0].clientY - shY;
-        if (dy > 0) sh.style.transform = `translateY(${dy}px)`;
-    }, {passive:true});
+        if (dy > 0) {
+            e.preventDefault(); 
+            sh.style.transform = `translateY(${dy}px)`;
+        }
+    }, {passive:false});
     sh.addEventListener('touchend', e => {
         if (!draggingSheet) return;
         const dy = e.changedTouches[0].clientY - shY;
@@ -810,7 +749,14 @@
 
     document.addEventListener('keydown', e => { if(e.key==='Escape') closeSheet(); });
 
-    document.getElementById('input-date').valueAsDate = new Date();
+    function setLocalToday(inputId) {
+        const el = document.getElementById(inputId);
+        if(el) {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+            el.value = new Date(Date.now() - tzoffset).toISOString().slice(0, 10);
+        }
+    }
+    setLocalToday('input-date');
 </script>
 
 <script type="module" src="app.js"></script>
