@@ -120,7 +120,7 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
             const dateStr = document.getElementById('input-family-date').value;
             const [y, m, d] = dateStr.split('-');
             const selectedDate = new Date(y, m - 1, d);
-            const createdAt = isNaN(selectedDate.getTime()) ? Date.now() : selectedDate.getTime();
+            const selectedMs = isNaN(selectedDate.getTime()) ? Date.now() : selectedDate.getTime();
             
             const data = {
                 families: window.currentFFamilies,
@@ -129,22 +129,15 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
             };
 
             if (editId) {
-                const existing = window.familiesData[editId];
-                if(existing) {
-                    data.createdAt = createdAt;
-                    data.history = existing.history || [];
-                    
-                    if (data.history.length > 0) {
-                        const lastCheck = data.history[data.history.length - 1];
-                        data.nextCheckTimestamp = lastCheck + 864000000;
-                    } else {
-                        data.nextCheckTimestamp = createdAt + 864000000;
-                    }
-                }
+                // Если мы Изменяем, мы НЕ трогаем историю и дату создания,
+                // мы просто перезаписываем дату Следующей проверки
+                data.nextCheckTimestamp = selectedMs;
                 updateDoc(doc(db, "families", editId), data);
             } else {
-                data.createdAt = createdAt;
-                data.nextCheckTimestamp = createdAt + 864000000;
+                // Если мы Создаем, дата из календаря становится датой Создания
+                // а следующая проверка будет через 10 дней
+                data.createdAt = selectedMs;
+                data.nextCheckTimestamp = selectedMs + 864000000;
                 data.history = [];
                 addDoc(collection(db, "families"), data);
             }
@@ -314,19 +307,28 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
         else if (nextT - today === 86400000) { nClass = 'soon'; showRenew = true; }
     }
 
-    const tagsHtml = (d.families || []).map(val => `<button class="btn-tag family-btn" onclick="event.stopPropagation()">${val}</button>`).join('');
+    const tagsHtml = (d.families || []).map(val => `<span class="btn-tag family-btn">${val}</span>`).join('');
+    
     const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('ru-RU')}</div>`).join('');
-    const historyBlock = `<div class="family-history" id="history-${safeId}"><div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('ru-RU')}</div>${histHtml}</div>`;
-    const cardClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
+    const historyBlock = `
+        <div class="family-history" id="history-${safeId}">
+            <div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('ru-RU')}</div>
+            ${histHtml}
+        </div>`;
+        
+    const cardClass = isAlert ? 'card alert family-card' : (isHistory ? 'card history family-card' : 'card family-card');
 
     return `
-    <div class="${cardClass}" onclick="window.toggleFamilyHistory(event, '${safeId}')" style="cursor: pointer;">
+    <div class="${cardClass}" onclick="window.toggleFamilyHistory(event, '${safeId}')">
         <div class="card-accent"></div>
         <div class="card-body">
             <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
             ${tagsHtml ? `<div class="card-row"><div class="card-row-val tags-wrap">${tagsHtml}</div></div>` : ''}
             <div class="card-dates single">
-                <div class="date-chip ${nClass}"><div class="date-chip-label">🔍 Наступна перевірка</div><div class="date-chip-val">${new Date(d.nextCheckTimestamp).toLocaleDateString('ru-RU')}</div></div>
+                <div class="date-chip ${nClass}">
+                    <div class="date-chip-label">🔍 Наступна перевірка</div>
+                    <div class="date-chip-val">${new Date(d.nextCheckTimestamp).toLocaleDateString('ru-RU')}</div>
+                </div>
             </div>
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
             ${historyBlock}
@@ -344,7 +346,8 @@ window.toggleCross = async (id, type, val, isCrossed) => {
 };
 
 window.toggleFamilyHistory = (e, id) => {
-    if (e && e.target.closest('button')) return;
+    // Игнорируем нажатия на кнопки действий, чтобы не открывалась история во время редактирования
+    if (e && e.target.closest('.btn-action, .btn-tag')) return;
     const el = document.getElementById(`history-${id}`);
     if(el) el.classList.toggle('show');
 };
@@ -353,7 +356,10 @@ window.renewFamily = async (id) => {
     const f = window.familiesData[id];
     if (!f) return;
     const now = Date.now();
-    await updateDoc(doc(db, "families", id), { history: [...(f.history || []), now], nextCheckTimestamp: now + 864000000 });
+    await updateDoc(doc(db, "families", id), { 
+        history: [...(f.history || []), now], 
+        nextCheckTimestamp: now + 864000000 
+    });
 };
 
 window.deleteItem = (col, id) => {
@@ -394,12 +400,17 @@ window.editBatch = id => {
 window.editFamily = id => {
     const d = window.familiesData[id];
     const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-    document.getElementById('input-family-date').value = new Date(d.createdAt - tzoffset).toISOString().slice(0, 10);
+    
+    document.getElementById('input-family-date').value = new Date(d.nextCheckTimestamp - tzoffset).toISOString().slice(0, 10);
     document.getElementById('input-comment').value = d.comment || '';
     window.currentFFamilies = [...(d.families || [])];
     window.renderTags();
 
     document.getElementById('sheet-title').textContent = '✏️ Редагування сім\'ї';
+    
+    const lbl = document.getElementById('family-date-label');
+    if(lbl) lbl.textContent = 'Наступна перевірка';
+    
     document.getElementById('add-form').dataset.editId = id;
     document.getElementById('add-form').dataset.editCollection = 'families';
     
@@ -421,6 +432,10 @@ window.cancelEdit = () => {
     window.renderTags();
     
     document.getElementById('sheet-title').textContent = window.appMode === 'batches' ? '📖 Нова партія' : '🏠 Нова перевірка сім\'ї';
+    
+    const lbl = document.getElementById('family-date-label');
+    if(lbl) lbl.textContent = 'Дата створення';
+    
     document.getElementById('cancel-edit-btn').style.display = 'none';
     document.getElementById('delete-edit-btn').style.display = 'none';
     document.getElementById('form-actions').classList.remove('is-editing');

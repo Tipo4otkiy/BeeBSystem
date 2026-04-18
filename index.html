@@ -217,6 +217,10 @@
             overflow: hidden;
             transition: transform 0.15s, box-shadow 0.15s;
         }
+        .card.family-card {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
         .card:active { transform: scale(0.985); }
         .card-accent { height: 3px; background: var(--honey); }
         .card.alert { border-color: rgba(255,77,77,0.22); }
@@ -305,15 +309,19 @@
         .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(255,77,77,0.18); }
         .btn-success { background: rgba(76,175,130,0.15); color: var(--success); border: 1px solid rgba(76,175,130,0.3); }
 
+        /* Обособленный дизайн истории для семей */
         .family-history {
             display: none;
-            margin-top: 11px;
-            padding-top: 11px;
-            border-top: 1px dashed var(--border);
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 8px;
+            border-left: 2px solid var(--honey);
             font-size: 0.82rem;
         }
         .family-history.show { display: block; }
         .history-item { color: var(--text-muted); margin-bottom: 5px; }
+        .history-item:last-child { margin-bottom: 0; }
 
         .empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); grid-column: 1/-1; }
         .empty-state-icon { font-size: 2.5rem; margin-bottom: 10px; opacity: 0.3; }
@@ -713,7 +721,7 @@
 
             <div id="form-families-fields" style="display:none;">
                 <div class="form-section">
-                    <label class="form-label">Дата створення</label>
+                    <label class="form-label" id="family-date-label">Дата створення</label>
                     <input class="form-input" type="date" id="input-family-date">
                 </div>
                 <div class="form-section">
