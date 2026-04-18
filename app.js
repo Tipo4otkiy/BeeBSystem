@@ -185,7 +185,7 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
             if (editId) {
                 updateDoc(doc(db, "families", editId), data);
             } else {
-                data.crossedFamilies = []; // Добавляем массив для зачеркиваний при создании
+                data.crossedFamilies = [];
                 addDoc(collection(db, "families"), data);
             }
         }
@@ -358,7 +358,6 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
         else if (nextT - today === 86400000) { nClass = 'soon'; showRenew = true; }
     }
 
-    // Возвращаем функцию перечеркивания для семей с указанием коллекции 'families'
     const buildTags = (arr, crossed, type, colorClass) => (arr || []).map(val => {
         const isCr = (crossed || []).includes(val);
         const safeVal = val.replace(/'/g, "\\'");
@@ -369,7 +368,7 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     
     const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('ru-RU')}</div>`).join('');
     const historyBlock = `
-        <div class="family-history" id="history-${safeId}">
+        <div class="family-history">
             <div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('ru-RU')}</div>
             ${histHtml}
         </div>`;
@@ -378,7 +377,7 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
 
     let actionsHtml = isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
         ${showRenew ? `<button type="button" class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
-        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border);" onclick="window.toggleFamilyHistory('${safeId}')">📜 Історія</button>
+        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border);" onclick="window.toggleFamilyHistory(this)">📜 Історія</button>
         <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>`;
 
     return `
@@ -402,9 +401,14 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     </div>`;
 }
 
-window.toggleFamilyHistory = (id) => {
-    const el = document.getElementById(`history-${id}`);
-    if (el) el.classList.toggle('show');
+// Теперь функция ищет историю не по ID, а внутри той самой карточки, где нажата кнопка
+window.toggleFamilyHistory = (btn) => {
+    if (!btn) return;
+    const card = btn.closest('.card');
+    if (card) {
+        const historyEl = card.querySelector('.family-history');
+        if (historyEl) historyEl.classList.toggle('show');
+    }
 };
 
 window.renewFamily = async (id) => {
