@@ -1,29 +1,27 @@
-const CACHE = 'v4-dovidnyk';
-const ASSETS = ['./index.html', './app.js', './manifest.json'];
+// Этот Service Worker работает в режиме "Только сеть" и убивает старый кэш
 
-self.addEventListener('install', e => {
+self.addEventListener('install', (e) => {
+    // Заставляем новый SW активироваться немедленно
     self.skipWaiting();
-    e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
 });
 
-self.addEventListener('activate', e => {
+self.addEventListener('activate', (e) => {
+    // При активации удаляем ВООБЩЕ ВСЕ кэши, которые были созданы ранее
     e.waitUntil(
-        caches.keys().then(keys => {
+        caches.keys().then((cacheNames) => {
             return Promise.all(
-                keys.filter(key => key !== CACHE).map(key => caches.delete(key))
+                cacheNames.map((cacheName) => {
+                    console.log('Удаляем старый кэш:', cacheName);
+                    return caches.delete(cacheName);
+                })
             );
-        }).then(() => self.clients.claim())
+        }).then(() => {
+            return self.clients.claim();
+        })
     );
 });
 
-self.addEventListener('fetch', e => {
-    e.respondWith(
-        fetch(e.request)
-            .then(res => {
-                const resClone = res.clone();
-                caches.open(CACHE).then(cache => cache.put(e.request, resClone));
-                return res;
-            })
-            .catch(() => caches.match(e.request))
-    );
+self.addEventListener('fetch', (e) => {
+    // Всегда идем в сеть (Network Only), никакого кэша
+    e.respondWith(fetch(e.request));
 });
