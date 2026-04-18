@@ -368,9 +368,8 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     
     const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('ru-RU')}</div>`).join('');
     
-    // ВАЖНО: Вместо id мы используем data-history-id
     const historyBlock = `
-        <div class="family-history" data-history-id="${safeId}">
+        <div class="family-history">
             <div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('ru-RU')}</div>
             ${histHtml}
         </div>`;
@@ -379,7 +378,7 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
 
     let actionsHtml = isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
         ${showRenew ? `<button type="button" class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
-        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border);" onclick="window.toggleFamilyHistory('${safeId}')">📜 Історія</button>
+        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border);" onclick="this.closest('.card-body').querySelector('.family-history').classList.toggle('show')">📜 Історія</button>
         <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>`;
 
     return `
@@ -404,10 +403,7 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
 }
 
 // НОВАЯ ФУНКЦИЯ: Находит все блоки с дата-атрибутом, игнорируя дублирования
-window.toggleFamilyHistory = (id) => {
-    const elements = document.querySelectorAll(`[data-history-id="${id}"]`);
-    elements.forEach(el => el.classList.toggle('show'));
-};
+
 
 window.renewFamily = async (id) => {
     const f = window.familiesData[id];
