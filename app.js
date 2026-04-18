@@ -394,11 +394,16 @@ window.toggleCross = async (id, type, val, isCrossed) => {
 // Бронебойная логика нажатия для телефонов
 window.toggleFamilyHistory = (e, id) => {
     if (e) {
-        // Защита от кликов по внутренним кнопкам, если пользователь промазал
-        let el = e.target;
-        if (el.nodeType === 3) el = el.parentNode; // Если кликнули на текст внутри блока
-        if (el.closest && el.closest('.btn-action, .btn-tag')) return;
+        let target = e.target;
+        // Защита от бага мобильных браузеров, когда клик попадает чисто в текст
+        if (target.nodeType === 3) target = target.parentNode; 
+        
+        // Если палец попал на любую кнопку или тег — игнорируем, историю не открываем
+        if (target.closest && target.closest('.btn-action, .btn-tag, .card-actions')) {
+            return;
+        }
     }
+    // Открываем или закрываем историю
     const el = document.getElementById(`history-${id}`);
     if (el) el.classList.toggle('show');
 };
