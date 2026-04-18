@@ -123,6 +123,7 @@ onSnapshot(
         const archiveLimit = 2 * 24 * 60 * 60 * 1000;
 
         const lists = { events: '', active: '', history: '' };
+        let eventsCount = 0;
 
         snapshot.forEach(docSnap => {
             const d = docSnap.data();
@@ -143,6 +144,7 @@ onSnapshot(
                 const selectTime = new Date(d.selectionDateTimestamp).setHours(0, 0, 0, 0);
                 if (hatchTime <= tomorrow || selectTime <= tomorrow) {
                     lists.events += buildCard(id, renderData, today, tomorrow, true);
+                    eventsCount++;
                 }
             }
         });
@@ -170,12 +172,11 @@ onSnapshot(
         if (dhiEl) dhiEl.innerHTML = hiHtml;
 
         const dot = document.getElementById('events-dot');
-        if (dot) dot.classList.toggle('visible', lists.events !== '');
+        if (dot) dot.classList.toggle('visible', eventsCount > 0);
         const badge = document.getElementById('desktop-events-badge');
         if (badge) {
-            const count = (lists.events.match(/class="card/g) || []).length;
-            badge.textContent = count || '';
-            badge.classList.toggle('visible', lists.events !== '');
+            badge.textContent = eventsCount || '';
+            badge.classList.toggle('visible', eventsCount > 0);
         }
     }
 );
@@ -189,10 +190,21 @@ function buildCard(id, d, today, tomorrow, isAlert = false) {
     const selectTime = new Date(d.selectionDateTimestamp).setHours(0, 0, 0, 0);
     const isHistory = d.status === 'history';
 
-    const hatchOverdue = hatchTime <= today;
-    const selectSoon = selectTime <= tomorrow;
-
     const safeId = id.replace(/'/g, "\\'");
+
+    let selectClass = '';
+    let hatchClass = '';
+    if (!isHistory) {
+        const sDiff = selectTime - today;
+        if (sDiff < 0) selectClass = 'overdue';
+        else if (sDiff === 0) selectClass = 'today';
+        else if (sDiff === 86400000) selectClass = 'soon';
+
+        const hDiff = hatchTime - today;
+        if (hDiff < 0) hatchClass = 'overdue';
+        else if (hDiff === 0) hatchClass = 'today';
+        else if (hDiff === 86400000) hatchClass = 'soon';
+    }
 
     const buildTags = (arr, crossed, type, colorClass) =>
         (arr || []).map(val => {
@@ -215,10 +227,12 @@ function buildCard(id, d, today, tomorrow, isAlert = false) {
         ? `<div class="card-comment">💬 ${d.comment}</div>`
         : '';
 
-    const actionsHtml = isHistory ? '' : `
+    const actionsHtml = isHistory ? `
+        <div class="card-actions">
+            <button class="btn-action btn-danger" onclick="window.deleteBatch('${safeId}')">🗑 Удалить</button>
+        </div>` : `
         <div class="card-actions">
             <button class="btn-action btn-edit" onclick="window.editBatch('${safeId}')">✏️ Изменить</button>
-            <button class="btn-action btn-danger" onclick="window.deleteBatch('${safeId}')">🗑 Удалить</button>
         </div>`;
 
     const cardClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
@@ -232,11 +246,11 @@ function buildCard(id, d, today, tomorrow, isAlert = false) {
             ${barTags ? `<div class="card-row"><span class="card-row-label">Планки</span><div class="card-row-val tags-wrap">${barTags}</div></div>` : ''}
             <div class="card-row"><span class="card-row-label">Кол-во</span><div class="card-row-val">${piecesHtml}</div></div>
             <div class="card-dates">
-                <div class="date-chip${selectSoon && !isHistory ? ' soon' : ''}">
+                <div class="date-chip ${selectClass}">
                     <div class="date-chip-label">🔍 Отбор</div>
                     <div class="date-chip-val">${selectDateStr}</div>
                 </div>
-                <div class="date-chip${hatchOverdue && !isHistory ? ' overdue' : ''}">
+                <div class="date-chip ${hatchClass}">
                     <div class="date-chip-label">🐣 Выход</div>
                     <div class="date-chip-val">${hatchDateStr}</div>
                 </div>
@@ -285,7 +299,7 @@ window.cancelEdit = () => {
     window.currentBars = [];
     window.currentFamilies = [];
     renderTags();
-    document.getElementById('sheet-title').textContent = '🐝 Новая партия';
+    document.getElementById('sheet-title').textContent = '📖 Новая партия';
     document.getElementById('submit-btn').textContent = 'СОХРАНИТЬ';
     document.getElementById('cancel-edit-btn').style.display = 'none';
     document.getElementById('form-actions').classList.remove('has-cancel');
