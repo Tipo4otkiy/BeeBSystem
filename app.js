@@ -367,8 +367,10 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     const tagsHtml = buildTags(d.families, d.crossedFamilies, 'Families', 'family-btn');
     
     const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('ru-RU')}</div>`).join('');
+    
+    // ВАЖНО: Вместо id мы используем data-history-id
     const historyBlock = `
-        <div class="family-history" id="history-${safeId}">
+        <div class="family-history" data-history-id="${safeId}">
             <div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('ru-RU')}</div>
             ${histHtml}
         </div>`;
@@ -401,10 +403,10 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     </div>`;
 }
 
-// ПРОСТАЯ И НАДЕЖНАЯ ФУНКЦИЯ ДЛЯ КНОПКИ ИСТОРИИ ПО ID
+// НОВАЯ ФУНКЦИЯ: Находит все блоки с дата-атрибутом, игнорируя дублирования
 window.toggleFamilyHistory = (id) => {
-    const el = document.getElementById(`history-${id}`);
-    if(el) el.classList.toggle('show');
+    const elements = document.querySelectorAll(`[data-history-id="${id}"]`);
+    elements.forEach(el => el.classList.toggle('show'));
 };
 
 window.renewFamily = async (id) => {
