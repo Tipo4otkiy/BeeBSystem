@@ -374,15 +374,18 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
             ${histHtml}
         </div>`;
         
-    const cardClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
+    // Добавляем класс family-card для стилизации кликабельности
+    const baseClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
+    const cardClass = baseClass + ' family-card';
 
+    // Убрали кнопку "Історія", оставили только функциональные кнопки
     let actionsHtml = isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
         ${showRenew ? `<button type="button" class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
-        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border);" onclick="this.closest('.card-body').querySelector('.family-history').classList.toggle('show')">📜 Історія</button>
         <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>`;
 
+    // Добавили onclick на главную обертку с проверкой (не кликнули ли мы по кнопке/тегу)
     return `
-    <div class="${cardClass}">
+    <div class="${cardClass}" onclick="if(!event.target.closest('button')) { this.querySelector('.family-history')?.classList.toggle('show'); }">
         <div class="card-accent"></div>
         <div class="card-body">
             <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
