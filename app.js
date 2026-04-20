@@ -331,7 +331,10 @@ function buildBatchCard(id, d, today, tomorrow, isAlert = false) {
     <div class="${cardClass}">
         <div class="card-accent"></div>
         <div class="card-body">
-            <div class="card-name">${d.lineage}</div>
+            <div class="card-header">
+                <div class="card-name">${d.lineage}</div>
+                <div class="card-graft-date">💉 ${new Date(d.expectedHatchTimestamp - 950400000).toLocaleDateString('uk-UA')}</div>
+            </div>
             ${d.families && d.families.length ? `<div class="card-row"><span class="card-row-label">Сім'ї</span><div class="card-row-val tags-wrap">${buildTags(d.families, d.crossedFamilies, 'Families', 'family-btn')}</div></div>` : ''}
             ${d.bars && d.bars.length ? `<div class="card-row"><span class="card-row-label">Планки</span><div class="card-row-val tags-wrap">${buildTags(d.bars, d.crossedBars, 'Bars', 'bar-btn')}</div></div>` : ''}
             <div class="card-row"><span class="card-row-label">Кіл-ть</span><div class="card-row-val">${piecesHtml}</div></div>
