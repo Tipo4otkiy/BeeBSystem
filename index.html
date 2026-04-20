@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,10 +11,26 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    </script>
+
     <style>
         :root {
             --honey: #4CAF50;
             --honey-dark: #388E3C;
+            --danger: #FF4D4D;
+            --success: #4CAF82;
+            --nav-h: 72px;
+            --header-h: 60px;
+            --sidebar-w: 230px;
+            --fab-size: 52px;
+            --radius: 16px;
+            
             --bg: #0F0F0F;
             --bg2: #1A1A1A;
             --bg3: #242424;
@@ -22,43 +38,57 @@
             --border: #2A2A2A;
             --text: #F0EDE8;
             --text-muted: #6A6560;
-            --danger: #FF4D4D;
             --danger-bg: rgba(255,77,77,0.1);
-            --success: #4CAF82;
             --family-bg: rgba(76,175,130,0.13);
             --family-text: #6DD5A5;
             --family-border: rgba(76,175,130,0.28);
             --bar-bg: rgba(100,160,255,0.13);
             --bar-text: #7DB8FF;
             --bar-border: rgba(100,160,255,0.28);
-            --nav-h: 72px;
-            --header-h: 60px;
-            --sidebar-w: 230px;
-            --fab-size: 52px;
-            --radius: 16px;
+        }
+
+        html[data-theme="light"] {
+            --bg: #F5F7FA;
+            --bg2: #FFFFFF;
+            --bg3: #EDF1F5;
+            --surface: #FFFFFF;
+            --border: #DDE2E8;
+            --text: #2D3748;
+            --text-muted: #718096;
+            --danger-bg: rgba(255,77,77,0.1);
+            --family-bg: rgba(76,175,130,0.15);
+            --family-text: #2F855A;
+            --family-border: rgba(76,175,130,0.3);
+            --bar-bg: rgba(100,160,255,0.15);
+            --bar-text: #2B6CB0;
+            --bar-border: rgba(100,160,255,0.3);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+        /* Жесткий каркас PWA */
+        html, body { height: 100%; }
         body {
             background: var(--bg);
             color: var(--text);
             font-family: 'Golos Text', sans-serif;
             font-size: 15px;
             line-height: 1.5;
-            overflow-x: hidden;
-            overscroll-behavior-y: none;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* Блокируем скролл самого body */
+            transition: background 0.3s, color 0.3s;
         }
 
         .mobile-header {
             height: var(--header-h);
+            flex-shrink: 0;
             background: var(--bg2);
             display: flex;
             align-items: center;
             justify-content: center;
-            position: sticky;
-            top: 0;
             z-index: 200;
+            position: relative;
         }
         .header-inner { display: flex; align-items: center; gap: 9px; }
         .header-bee {
@@ -77,15 +107,28 @@
             letter-spacing: 0.08em;
             color: var(--honey);
         }
+        
+        .theme-toggle {
+            position: absolute;
+            right: 18px;
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+        .theme-toggle:active { transform: scale(0.9); }
 
-        /* ОЧЕВИДНЫЙ ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМОВ */
         .top-mode-tabs {
+            flex-shrink: 0;
             display: flex;
             background: var(--bg2);
             padding: 12px 16px;
             gap: 10px;
-            position: sticky;
-            top: var(--header-h);
             z-index: 190;
             border-bottom: 1px solid var(--border);
         }
@@ -111,23 +154,32 @@
             transform: translateY(-1px);
         }
 
-        .tabs-viewport { overflow: hidden; position: relative; }
-        .tabs-track {
+        /* Нативный контейнер вкладок с независимым скроллом */
+        .tabs-viewport { 
+            flex: 1; 
             display: flex;
-            width: 300%;
-            transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
-            will-change: transform;
+            overflow-x: auto; 
+            overflow-y: hidden; 
+            scroll-snap-type: x mandatory; 
+            scroll-behavior: smooth; 
+            scrollbar-width: none; 
+            -webkit-overflow-scrolling: touch;
         }
+        .tabs-viewport::-webkit-scrollbar { display: none; }
+        
         .tab-pane {
-            width: calc(100% / 3);
-            min-height: calc(100dvh - var(--header-h) - 65px - var(--nav-h));
-            padding: 18px 14px calc(var(--fab-size) + 88px);
-            flex-shrink: 0;
+            flex: 0 0 100vw; /* Занимает ровно один экран */
+            width: 100vw;
+            height: 100%;
+            overflow-y: auto; /* Свой скролл для каждой вкладки */
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            padding: 18px 14px 40px; 
+            -webkit-overflow-scrolling: touch;
         }
 
         .bottom-nav {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
+            flex-shrink: 0;
             height: var(--nav-h);
             background: var(--bg2);
             border-top: 1px solid var(--border);
@@ -169,7 +221,7 @@
 
         .fab {
             position: fixed;
-            bottom: calc(var(--nav-h) + 14px);
+            bottom: calc(var(--nav-h) + 14px + env(safe-area-inset-bottom, 0));
             right: 18px;
             z-index: 450;
             width: var(--fab-size);
@@ -317,7 +369,7 @@
             display: none;
             margin-top: 12px;
             padding: 10px 12px;
-            background: rgba(0,0,0,0.15);
+            background: rgba(0,0,0,0.05);
             border-radius: 8px;
             border-left: 2px solid var(--honey);
             font-size: 0.82rem;
@@ -359,24 +411,33 @@
             z-index: 600;
             transform: translateY(105%);
             transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
-            max-height: 93dvh;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            height: 93dvh;
+            display: flex;
+            flex-direction: column;
             will-change: transform;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.3);
         }
-        .bottom-sheet.open { transform: translateY(0); }
+        .bottom-sheet.open.half { transform: translateY(45dvh); }
+        .bottom-sheet.open.full { transform: translateY(0); }
 
+        .sheet-handle-area {
+            position: relative;
+            padding-top: 13px;
+            background: var(--bg2);
+            border-radius: 22px 22px 0 0;
+            z-index: 2;
+        }
         .sheet-handle {
-            width: 36px; height: 4px;
-            background: var(--border); border-radius: 2px;
-            margin: 13px auto 0;
+            width: 40px; height: 5px;
+            background: var(--border); border-radius: 3px;
+            margin: 0 auto;
         }
         .sheet-header {
             display: flex; align-items: center;
             justify-content: space-between;
             padding: 14px 20px 6px;
-            position: sticky; top: 0;
-            background: var(--bg2); z-index: 1;
+            background: var(--bg2);
+            touch-action: none; 
         }
         .sheet-title {
             font-family: 'Unbounded', sans-serif;
@@ -391,7 +452,12 @@
         }
         .sheet-close:hover { background: var(--border); }
 
-        .form-body { padding: 6px 18px 36px; }
+        .form-body { 
+            padding: 6px 18px 36px; 
+            overflow-y: auto; 
+            flex: 1;
+            -webkit-overflow-scrolling: touch;
+        }
         .form-section { margin-bottom: 18px; }
         .form-label {
             font-size: 0.72rem; font-weight: 600;
@@ -431,11 +497,8 @@
         .badge-bar { background: var(--bar-bg); color: var(--bar-text); border-color: var(--bar-border); }
         .badge-family { background: var(--family-bg); color: var(--family-text); border-color: var(--family-border); }
 
-        /* Поля истории внутри формы */
         .history-edit-row {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 8px;
+            display: flex; gap: 8px; margin-bottom: 8px;
         }
         .history-edit-row .form-input { flex: 1; }
         .btn-del-history {
@@ -443,10 +506,7 @@
             color: var(--danger);
             border: 1px solid rgba(255,77,77,0.18);
             border-radius: 11px;
-            width: 46px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            cursor: pointer;
+            width: 46px; font-weight: bold; font-size: 1.1rem; cursor: pointer;
         }
 
         .form-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 22px; }
@@ -482,13 +542,12 @@
         .desktop-main { display: none; }
 
         @media (min-width: 800px) {
-            body { display: flex; height: 100dvh; overflow: hidden; }
-
-            .mobile-header { display: none; }
-            .top-mode-tabs { display: none; }
-            .bottom-nav { display: none; }
-            .tabs-viewport { display: none; }
-            .fab { display: none; }
+            body { 
+                flex-direction: row; 
+            }
+            .mobile-header, .top-mode-tabs, .bottom-nav, .tabs-viewport, .fab { 
+                display: none !important; 
+            }
 
             .desktop-sidebar {
                 display: flex;
@@ -527,7 +586,6 @@
                 border: none; background: none; width: 100%;
                 text-align: left;
                 transition: background 0.18s, color 0.18s;
-                position: relative;
             }
             .sidebar-item:hover { background: var(--bg3); color: var(--text); }
             .sidebar-item.active { background: rgba(76,175,80,0.1); color: var(--honey); }
@@ -572,8 +630,9 @@
 
             .desktop-main {
                 display: block;
-                flex: 1; overflow-y: auto;
+                flex: 1; 
                 height: 100dvh;
+                overflow-y: auto; /* Скроллится только контентная часть */
                 padding: 28px 28px 40px;
                 -webkit-overflow-scrolling: touch;
             }
@@ -583,23 +642,21 @@
             .bottom-sheet {
                 bottom: auto; left: 50%; right: auto;
                 top: 50%;
-                transform: translate(-50%, -44%) scale(0.95);
+                transform: translate(-50%, -44%) scale(0.95) !important;
                 border-radius: 20px;
                 width: min(520px, 94vw);
+                height: auto;
                 max-height: 88dvh;
                 opacity: 0;
+                pointer-events: none;
                 transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.25s;
             }
-            .bottom-sheet.open {
-                transform: translate(-50%, -50%) scale(1);
+            .bottom-sheet.open.half, .bottom-sheet.open.full {
+                transform: translate(-50%, -50%) scale(1) !important;
                 opacity: 1;
+                pointer-events: all;
             }
-            .sheet-handle { display: none; }
-        }
-
-        @media (min-width: 1100px) {
-            :root { --sidebar-w: 248px; }
-            .desktop-main { padding: 32px 36px 40px; }
+            .sheet-handle-area { display: none; }
         }
     </style>
 </head>
@@ -610,6 +667,7 @@
         <span class="header-bee">📖</span>
         <span class="header-title">ДОВІДНИК</span>
     </div>
+    <button class="theme-toggle" onclick="window.toggleTheme()">🌓</button>
 </header>
 
 <div class="top-mode-tabs">
@@ -621,28 +679,29 @@
     <div class="sidebar-logo">
         <span class="sidebar-bee">📖</span>
         <div class="sidebar-title">ДОВІДНИК</div>
+        <button class="theme-toggle" onclick="window.toggleTheme()" style="position: static; margin-left: auto; width: 32px; height: 32px; font-size: 1rem;">🌓</button>
     </div>
     <div class="desktop-mode-tabs">
         <button class="mode-tab active" data-mode="batches" onclick="window.setAppMode('batches')">МАТКИ</button>
         <button class="mode-tab" data-mode="families" onclick="window.setAppMode('families')">СІМ'Ї</button>
     </div>
     <nav class="sidebar-nav">
-        <button class="sidebar-item active" onclick="switchDesktop(0,this)">
+        <button class="sidebar-item active" onclick="window.switchDesktop(0,this)">
             <span class="sidebar-item-icon">🚨</span>
             Події
             <span class="sidebar-item-badge" id="desktop-events-badge"></span>
         </button>
-        <button class="sidebar-item" onclick="switchDesktop(1,this)">
+        <button class="sidebar-item" onclick="window.switchDesktop(1,this)">
             <span class="sidebar-item-icon">📋</span>
             Записи
         </button>
-        <button class="sidebar-item" onclick="switchDesktop(2,this)">
+        <button class="sidebar-item" onclick="window.switchDesktop(2,this)">
             <span class="sidebar-item-icon">📜</span>
             Архів
         </button>
     </nav>
     <div class="sidebar-fab-wrap">
-        <button class="sidebar-fab-btn" onclick="openSheet()">
+        <button class="sidebar-fab-btn" onclick="window.openSheet()">
             ＋ &nbsp;Створити
         </button>
     </div>
@@ -672,38 +731,38 @@
 </main>
 
 <div class="tabs-viewport" id="tabs-viewport">
-    <div class="tabs-track" id="tabs-track">
-        <div class="tab-pane" id="tab-events">
-            <p class="section-title">🚨 Термінові події</p>
-            <div id="events-list" class="grid-list">
-                <div class="loading-shimmer"></div>
-                <div class="loading-shimmer"></div>
-            </div>
+    <div class="tab-pane" id="tab-events">
+        <p class="section-title">🚨 Термінові події</p>
+        <div id="events-list" class="grid-list">
+            <div class="loading-shimmer"></div>
+            <div class="loading-shimmer"></div>
         </div>
-        <div class="tab-pane" id="tab-add">
-            <p class="section-title">📋 Активні</p>
-            <div id="active-list" class="grid-list">
-                <div class="loading-shimmer"></div>
-            </div>
+    </div>
+    <div class="tab-pane" id="tab-add">
+        <p class="section-title">📋 Активні</p>
+        <div id="active-list" class="grid-list">
+            <div class="loading-shimmer"></div>
         </div>
-        <div class="tab-pane" id="tab-history">
-            <p class="section-title">📜 Архів</p>
-            <div id="history-list" class="grid-list">
-                <div class="loading-shimmer"></div>
-            </div>
+    </div>
+    <div class="tab-pane" id="tab-history">
+        <p class="section-title">📜 Архів</p>
+        <div id="history-list" class="grid-list">
+            <div class="loading-shimmer"></div>
         </div>
     </div>
 </div>
 
-<button class="fab" id="fab" onclick="openSheet()" aria-label="Створити">＋</button>
+<button class="fab" id="fab" onclick="window.openSheet()" aria-label="Створити">＋</button>
 
-<div class="sheet-overlay" id="sheet-overlay" onclick="closeSheet()"></div>
+<div class="sheet-overlay" id="sheet-overlay" onclick="window.closeSheet()"></div>
 
 <div class="bottom-sheet" id="bottom-sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-header">
+    <div class="sheet-handle-area" id="sheet-handle-area">
+        <div class="sheet-handle"></div>
+    </div>
+    <div class="sheet-header" id="sheet-header">
         <span class="sheet-title" id="sheet-title">📖 Нова партія</span>
-        <button class="sheet-close" onclick="closeSheet()">✕</button>
+        <button type="button" class="sheet-close" onclick="window.closeSheet()">✕</button>
     </div>
     <div class="form-body">
         <form id="add-form">
@@ -783,107 +842,149 @@
 </div>
 
 <nav class="bottom-nav">
-    <button class="nav-btn active" onclick="switchTab(0,this)">
+    <button class="nav-btn active" onclick="window.switchTab(0)">
         <span class="nav-icon">🚨</span>
         <span class="nav-label">Події</span>
         <span class="nav-dot" id="events-dot"></span>
     </button>
-    <button class="nav-btn" onclick="switchTab(1,this)">
+    <button class="nav-btn" onclick="window.switchTab(1)">
         <span class="nav-icon">📋</span>
         <span class="nav-label">Записи</span>
     </button>
-    <button class="nav-btn" onclick="switchTab(2,this)">
+    <button class="nav-btn" onclick="window.switchTab(2)">
         <span class="nav-icon">📜</span>
         <span class="nav-label">Архів</span>
     </button>
 </nav>
 
 <script>
-    let currentTab = 0;
-    const track = document.getElementById('tabs-track');
-
-    function switchTab(idx, btn) {
-        currentTab = idx;
-        track.style.transition = '';
-        track.style.transform = `translateX(-${(idx/3)*100}%)`;
-        document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
-        window.scrollTo(0,0);
-    }
-
-    let txS=0, tyS=0, swiping=false;
-    const vp = document.getElementById('tabs-viewport');
-    vp.addEventListener('touchstart', e => {
-        txS = e.touches[0].clientX; tyS = e.touches[0].clientY; swiping = false;
-    }, {passive:true});
-    vp.addEventListener('touchmove', e => {
-        const dx = e.touches[0].clientX-txS, dy = e.touches[0].clientY-tyS;
-        if (!swiping && Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>8) swiping = true;
-        if (swiping) {
-            const pct = (currentTab/3*100) - (dx/window.innerWidth*100/3);
-            track.style.transition = 'none';
-            track.style.transform = `translateX(-${Math.max(0,Math.min(pct,66.67))}%)`;
-        }
-    }, {passive:true});
-    vp.addEventListener('touchend', e => {
-        const dx = e.changedTouches[0].clientX - txS;
-        track.style.transition = '';
-        if (swiping && Math.abs(dx)>48) {
-            const next = Math.max(0, Math.min(2, currentTab+(dx<0?1:-1)));
-            switchTab(next, document.querySelectorAll('.nav-btn')[next]);
+    // Переключение темы
+    window.toggleTheme = () => {
+        const root = document.documentElement;
+        const isLight = root.getAttribute('data-theme') === 'light';
+        const next = isLight ? 'dark' : 'light';
+        if (next === 'light') {
+            root.setAttribute('data-theme', 'light');
         } else {
-            switchTab(currentTab, document.querySelectorAll('.nav-btn')[currentTab]);
+            root.removeAttribute('data-theme');
         }
-        swiping = false;
-    }, {passive:true});
+        localStorage.setItem('theme', next);
+    };
 
-    function switchDesktop(idx, btn) {
+    let currentTab = 0;
+    const vp = document.getElementById('tabs-viewport');
+    let scrollTimeout;
+
+    // Нативный скролл вкладок: сам определяет на какой мы странице и зажигает кнопку внизу
+    vp.addEventListener('scroll', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            const newIdx = Math.round(vp.scrollLeft / window.innerWidth);
+            if (newIdx !== currentTab) {
+                currentTab = newIdx;
+                document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', i === currentTab));
+            }
+        }, 50);
+    }, { passive: true });
+
+    // Клик по кнопкам нижнего меню перематывает контейнер
+    window.switchTab = (idx) => {
+        currentTab = idx;
+        vp.scrollTo({ left: idx * window.innerWidth, behavior: 'smooth' });
+        document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', i === idx));
+    };
+
+    window.switchDesktop = (idx, btn) => {
         document.querySelectorAll('.desktop-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
         document.querySelectorAll('.sidebar-nav .sidebar-item').forEach((b,i) => b.classList.toggle('active', i===idx));
-    }
+    };
 
-    function openSheet(editMode=false) {
+    let sheetState = 0;
+
+    window.openSheet = (editMode=false) => {
+        if (!editMode) window.cancelEdit && window.cancelEdit();
+        
         document.getElementById('sheet-overlay').classList.add('open');
-        document.getElementById('bottom-sheet').classList.add('open');
+        const sh = document.getElementById('bottom-sheet');
+        sh.style.transition = 'transform 0.38s cubic-bezier(0.4, 0, 0.2, 1)';
+        sh.classList.remove('full');
+        sh.classList.add('open', 'half');
+        sheetState = 1;
+        
         const fab = document.getElementById('fab');
         if (fab) fab.classList.add('is-open');
         if (!editMode) {
             document.getElementById('sheet-title').textContent = window.appMode === 'batches' ? '📖 Нова партія' : '🏠 Нова сім\'я';
         }
-    }
-    function closeSheet() {
+    };
+    
+    window.closeSheet = () => {
         document.getElementById('sheet-overlay').classList.remove('open');
-        document.getElementById('bottom-sheet').classList.remove('open');
+        const sh = document.getElementById('bottom-sheet');
+        sh.style.transition = 'transform 0.38s cubic-bezier(0.4, 0, 0.2, 1)';
+        sh.classList.remove('open', 'half', 'full');
+        sheetState = 0;
+        
         const fab = document.getElementById('fab');
         if (fab) fab.classList.remove('is-open');
-        if (!document.getElementById('add-form').dataset.editId) {
+        if (!document.getElementById('add-form')?.dataset.editId) {
             window.cancelEdit && window.cancelEdit();
         }
-    }
+    };
 
-    let shY=0, draggingSheet=false;
+    // Оптимизированные жесты шторки (слушатели включаются ТОЛЬКО при касании шапки)
+    let shY = 0;
     const sh = document.getElementById('bottom-sheet');
-    sh.addEventListener('touchstart', e => {
-        if (e.target.closest('.sheet-handle, .sheet-header')) {
-            shY = e.touches[0].clientY; draggingSheet = true;
-        }
-    }, {passive:true});
-    sh.addEventListener('touchmove', e => {
-        if (!draggingSheet) return;
-        const dy = e.touches[0].clientY - shY;
-        if (dy > 0) {
-            e.preventDefault(); 
-            sh.style.transform = `translateY(${dy}px)`;
-        }
-    }, {passive:false});
-    sh.addEventListener('touchend', e => {
-        if (!draggingSheet) return;
-        const dy = e.changedTouches[0].clientY - shY;
-        sh.style.transform = '';
-        draggingSheet = false;
-        if (dy > 90) closeSheet();
-    }, {passive:true});
+    const dragArea1 = document.getElementById('sheet-handle-area');
+    const dragArea2 = document.getElementById('sheet-header');
 
-    document.addEventListener('keydown', e => { if(e.key==='Escape') closeSheet(); });
+    const onTouchMove = e => {
+        e.preventDefault(); 
+        const dy = e.touches[0].clientY - shY;
+        if (sheetState === 2 && dy > 0) {
+            sh.style.transform = `translateY(${dy}px)`;
+        } else if (sheetState === 1) {
+            sh.style.transform = `translateY(calc(45dvh + ${dy}px))`;
+        }
+    };
+
+    const onTouchEnd = e => {
+        window.removeEventListener('touchmove', onTouchMove);
+        window.removeEventListener('touchend', onTouchEnd);
+        
+        sh.style.transition = 'transform 0.38s cubic-bezier(0.4, 0, 0.2, 1)';
+        sh.style.transform = ''; 
+        
+        const dy = e.changedTouches[0].clientY - shY;
+        
+        if (dy > 60) {
+            if (sheetState === 2) {
+                sh.classList.remove('full');
+                sh.classList.add('half');
+                sheetState = 1;
+            } else if (sheetState === 1) {
+                window.closeSheet();
+            }
+        } else if (dy < -60) {
+            if (sheetState === 1) {
+                sh.classList.remove('half');
+                sh.classList.add('full');
+                sheetState = 2;
+            }
+        }
+    };
+
+    const handleTouchStart = e => {
+        shY = e.touches[0].clientY; 
+        sh.style.transition = 'none'; 
+        window.addEventListener('touchmove', onTouchMove, {passive:false});
+        window.addEventListener('touchend', onTouchEnd, {passive:true});
+    };
+
+    dragArea1.addEventListener('touchstart', handleTouchStart, {passive:true});
+    dragArea2.addEventListener('touchstart', handleTouchStart, {passive:true});
+
+    document.addEventListener('keydown', e => { if(e.key==='Escape') window.closeSheet(); });
 
 </script>
 

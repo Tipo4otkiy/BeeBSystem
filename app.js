@@ -26,15 +26,12 @@ const getStampFromIso = (isoStr) => {
 };
 
 window.appMode = 'batches';
-
 window.currentBars = [];
 window.currentFamilies = [];
 window.currentFFamilies = [];
 window.currentFHistory = [];
-
 window.batchesData = {};
 window.familiesData = {};
-
 window.listsBatches = { events: '', active: '', history: '', count: 0 };
 window.listsFamilies = { events: '', active: '', history: '', count: 0 };
 
@@ -134,14 +131,17 @@ window.recalcNextCheck = () => {
     document.getElementById('input-f-next').value = getLocalIsoDate(maxDate + 864000000);
 };
 
-document.getElementById('add-form').addEventListener('submit', (e) => {
+document.getElementById('add-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const editId = e.target.dataset.editId;
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.5';
     
     try {
         if (window.appMode === 'batches') {
             const graftDate = document.getElementById('input-date').value;
-            if(!graftDate) return;
+            if(!graftDate) throw new Error("Empty date");
             const graftMs = getStampFromIso(graftDate);
 
             const data = {
@@ -157,12 +157,12 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
             };
 
             if (editId) {
-                updateDoc(doc(db, "batches", editId), data);
+                await updateDoc(doc(db, "batches", editId), data);
             } else {
                 data.createdAt = Date.now();
                 data.crossedBars = [];
                 data.crossedFamilies = [];
-                addDoc(collection(db, "batches"), data);
+                await addDoc(collection(db, "batches"), data);
             }
         } else {
             const createdMs = getStampFromIso(document.getElementById('input-f-created').value);
@@ -183,18 +183,21 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
             };
 
             if (editId) {
-                updateDoc(doc(db, "families", editId), data);
+                await updateDoc(doc(db, "families", editId), data);
             } else {
                 data.crossedFamilies = [];
-                addDoc(collection(db, "families"), data);
+                await addDoc(collection(db, "families"), data);
             }
         }
 
         window.cancelEdit();
-        closeSheet();
+        window.closeSheet();
 
     } catch (err) {
-        console.error(err);
+        alert("Помилка збереження. Перевірте дані.");
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
     }
 });
 
@@ -321,7 +324,7 @@ function buildBatchCard(id, d, today, tomorrow, isAlert = false) {
         return `<button type="button" class="btn-tag ${colorClass}${isCr ? ' crossed' : ''}" onclick="window.toggleCross('${safeId}','${type}','${safeVal}',${isCr}, 'batches')">${val}</button>`;
     }).join('');
 
-    const piecesHtml = d.pieces ? `<span class="card-pieces">📦 ${d.pieces} шт.</span>` : `<span class="card-pieces missing">📦 не указано!</span>`;
+    const piecesHtml = d.pieces ? `<span class="card-pieces">📦 ${d.pieces} шт.</span>` : `<span class="card-pieces missing">📦 не вказано!</span>`;
     const cardClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
 
     return `
@@ -329,16 +332,16 @@ function buildBatchCard(id, d, today, tomorrow, isAlert = false) {
         <div class="card-accent"></div>
         <div class="card-body">
             <div class="card-name">${d.lineage}</div>
-            ${d.families && d.families.length ? `<div class="card-row"><span class="card-row-label">Семьи</span><div class="card-row-val tags-wrap">${buildTags(d.families, d.crossedFamilies, 'Families', 'family-btn')}</div></div>` : ''}
+            ${d.families && d.families.length ? `<div class="card-row"><span class="card-row-label">Сім'ї</span><div class="card-row-val tags-wrap">${buildTags(d.families, d.crossedFamilies, 'Families', 'family-btn')}</div></div>` : ''}
             ${d.bars && d.bars.length ? `<div class="card-row"><span class="card-row-label">Планки</span><div class="card-row-val tags-wrap">${buildTags(d.bars, d.crossedBars, 'Bars', 'bar-btn')}</div></div>` : ''}
-            <div class="card-row"><span class="card-row-label">Кол-во</span><div class="card-row-val">${piecesHtml}</div></div>
+            <div class="card-row"><span class="card-row-label">Кіл-ть</span><div class="card-row-val">${piecesHtml}</div></div>
             <div class="card-dates">
-                <div class="date-chip ${selectClass}"><div class="date-chip-label">🔍 Отбор</div><div class="date-chip-val">${new Date(d.selectionDateTimestamp).toLocaleDateString('ru-RU')}</div></div>
-                <div class="date-chip ${hatchClass}"><div class="date-chip-label">🐣 Выход</div><div class="date-chip-val">${new Date(d.expectedHatchTimestamp).toLocaleDateString('ru-RU')}</div></div>
+                <div class="date-chip ${selectClass}"><div class="date-chip-label">🔍 Відбір</div><div class="date-chip-val">${new Date(d.selectionDateTimestamp).toLocaleDateString('uk-UA')}</div></div>
+                <div class="date-chip ${hatchClass}"><div class="date-chip-label">🐣 Вихід</div><div class="date-chip-val">${new Date(d.expectedHatchTimestamp).toLocaleDateString('uk-UA')}</div></div>
             </div>
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
             <div class="card-actions">
-                ${isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('batches', '${safeId}')">🗑 Удалить</button>` : `<button type="button" class="btn-action btn-edit" onclick="window.editBatch('${safeId}')">✏️ Изменить</button>`}
+                ${isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('batches', '${safeId}')">🗑 Видалити</button>` : `<button type="button" class="btn-action btn-edit" onclick="window.editBatch('${safeId}')">✏️ Змінити</button>`}
             </div>
         </div>
     </div>`;
@@ -365,25 +368,21 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     }).join('');
 
     const tagsHtml = buildTags(d.families, d.crossedFamilies, 'Families', 'family-btn');
-    
-    const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('ru-RU')}</div>`).join('');
+    const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('uk-UA')}</div>`).join('');
     
     const historyBlock = `
         <div class="family-history">
-            <div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('ru-RU')}</div>
+            <div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('uk-UA')}</div>
             ${histHtml}
         </div>`;
         
-    // Добавляем класс family-card для стилизации кликабельности
     const baseClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
     const cardClass = baseClass + ' family-card';
 
-    // Убрали кнопку "Історія", оставили только функциональные кнопки
-    let actionsHtml = isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Удалить</button>` : `
+    let actionsHtml = isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Видалити</button>` : `
         ${showRenew ? `<button type="button" class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
-        <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Изменить</button>`;
+        <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Змінити</button>`;
 
-    // Добавили onclick на главную обертку с проверкой (не кликнули ли мы по кнопке/тегу)
     return `
     <div class="${cardClass}" onclick="if(!event.target.closest('button')) { this.querySelector('.family-history')?.classList.toggle('show'); }">
         <div class="card-accent"></div>
@@ -393,7 +392,7 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
             <div class="card-dates single">
                 <div class="date-chip ${nClass}">
                     <div class="date-chip-label">🔍 Наступна перевірка</div>
-                    <div class="date-chip-val">${new Date(d.nextCheckTimestamp).toLocaleDateString('ru-RU')}</div>
+                    <div class="date-chip-val">${new Date(d.nextCheckTimestamp).toLocaleDateString('uk-UA')}</div>
                 </div>
             </div>
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
@@ -404,9 +403,6 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
         </div>
     </div>`;
 }
-
-// НОВАЯ ФУНКЦИЯ: Находит все блоки с дата-атрибутом, игнорируя дублирования
-
 
 window.renewFamily = async (id) => {
     const f = window.familiesData[id];
@@ -419,7 +415,7 @@ window.renewFamily = async (id) => {
 };
 
 window.deleteItem = (col, id) => {
-    if (confirm("Удалить навсегда?")) deleteDoc(doc(db, col, id));
+    if (confirm("Видалити назавжди?")) deleteDoc(doc(db, col, id));
 };
 
 window.deleteFromEdit = () => {
@@ -428,7 +424,7 @@ window.deleteFromEdit = () => {
     if (id && col) {
         window.deleteItem(col, id);
         window.cancelEdit();
-        closeSheet();
+        window.closeSheet();
     }
 };
 
@@ -450,7 +446,7 @@ window.editBatch = id => {
     document.getElementById('delete-edit-btn').style.display = 'block';
     document.getElementById('form-actions').classList.add('is-editing');
     
-    openSheet(true);
+    window.openSheet(true);
 };
 
 window.editFamily = id => {
@@ -475,7 +471,7 @@ window.editFamily = id => {
     document.getElementById('delete-edit-btn').style.display = 'block';
     document.getElementById('form-actions').classList.add('is-editing');
     
-    openSheet(true);
+    window.openSheet(true);
 };
 
 window.cancelEdit = () => {
