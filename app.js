@@ -384,7 +384,8 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
 
     let actionsHtml = isHistory ? `<button type="button" class="btn-action btn-danger" onclick="window.deleteItem('families', '${safeId}')">🗑 Видалити</button>` : `
         ${showRenew ? `<button type="button" class="btn-action btn-success" onclick="window.renewFamily('${safeId}')">✅ Перевірено</button>` : ''}
-        <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Змінити</button>`;
+        <button type="button" class="btn-action btn-edit" onclick="window.editFamily('${safeId}')">✏️ Змінити</button>
+        <button type="button" class="btn-action btn-danger" style="background: rgba(255,77,77,0.08);" onclick="window.archiveFamily('${safeId}')">🔒 Закрити</button>`;
 
     return `
     <div class="${cardClass}" onclick="if(!event.target.closest('button')) { this.querySelector('.family-history')?.classList.toggle('show'); }">
@@ -416,6 +417,20 @@ window.renewFamily = async (id) => {
         nextCheckTimestamp: now + 864000000 
     });
 };
+
+// === ВСТАВЬТЕ ЭТОТ БЛОК НАЧИНАЯ ОТСЮДА ===
+window.archiveFamily = async (id) => {
+    if (confirm("Закрити цю сім'ю та перенести в архів?")) {
+        try {
+            await updateDoc(doc(db, "families", id), { 
+                status: 'history' 
+            });
+        } catch (err) {
+            alert("Помилка при закритті сім'ї.");
+        }
+    }
+};
+// === КОНЕЦ НОВОГО БЛОКА ===
 
 window.deleteItem = (col, id) => {
     if (confirm("Видалити назавжди?")) deleteDoc(doc(db, col, id));
