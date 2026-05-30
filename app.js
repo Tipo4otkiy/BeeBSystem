@@ -393,12 +393,16 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
         <div class="card-body">
             <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
             ${tagsHtml ? `<div class="card-row"><div class="card-row-val tags-wrap">${tagsHtml}</div></div>` : ''}
+            
+            ${!isHistory ? `
             <div class="card-dates single">
                 <div class="date-chip ${nClass}">
                     <div class="date-chip-label">🔍 Наступна перевірка</div>
                     <div class="date-chip-val">${new Date(d.nextCheckTimestamp).toLocaleDateString('uk-UA')}</div>
                 </div>
             </div>
+            ` : ''}
+
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
             ${historyBlock}
             <div class="card-actions">
