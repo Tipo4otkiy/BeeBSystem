@@ -371,12 +371,16 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     }).join('');
 
     const tagsHtml = buildTags(d.families, d.crossedFamilies, 'Families', 'family-btn');
+    
+    // Генерируем пункты аудита проверок
     const histHtml = (d.history || []).map(t => `<div class="history-item">✅ Перевірено: ${new Date(t).toLocaleDateString('uk-UA')}</div>`).join('');
     
+    // Если проверок еще не было, показываем аккуратный текст-заглушку
+    const historyContent = histHtml || `<div class="history-item" style="font-style: italic; opacity: 0.6; text-align: center;">Немає попередніх перевірок</div>`;
+
     const historyBlock = `
         <div class="family-history">
-            <div class="history-item">🌱 Створено: ${new Date(d.createdAt).toLocaleDateString('uk-UA')}</div>
-            ${histHtml}
+            ${historyContent}
         </div>`;
         
     const baseClass = isAlert ? 'card alert' : (isHistory ? 'card history' : 'card');
@@ -391,7 +395,11 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
     <div class="${cardClass}" onclick="if(!event.target.closest('button')) { this.querySelector('.family-history')?.classList.toggle('show'); }">
         <div class="card-accent"></div>
         <div class="card-body">
-            <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
+            <div class="card-header">
+                <div class="card-name">Сім'ї: ${(d.families || []).join(', ')}</div>
+                <div class="card-graft-date">🌱 ${new Date(d.createdAt).toLocaleDateString('uk-UA')}</div>
+            </div>
+            
             ${tagsHtml ? `<div class="card-row"><div class="card-row-val tags-wrap">${tagsHtml}</div></div>` : ''}
             
             ${!isHistory ? `
@@ -402,9 +410,11 @@ function buildFamilyCard(id, d, today, tomorrow, isAlert = false) {
                 </div>
             </div>
             ` : ''}
-
+            
             ${d.comment ? `<div class="card-comment">💬 ${d.comment}</div>` : ''}
+            
             ${historyBlock}
+            
             <div class="card-actions">
                 ${actionsHtml}
             </div>
